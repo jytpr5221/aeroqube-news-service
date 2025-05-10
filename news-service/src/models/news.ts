@@ -122,6 +122,7 @@ export const NewsSchema = new Schema({
   editedBy: {
     type: Schema.Types.ObjectId,
     ref: "User",
+    default:null
   },
   publishedBy: {
     type: Schema.Types.ObjectId,
@@ -167,6 +168,11 @@ export const NewsSchema = new Schema({
 NewsSchema.pre<INews>('save',function(next){
     this.updatedAt=new Date()
     next()
+})
+
+NewsSchema.pre<INews>('save',function(next){
+  if(this.reportedBy!==null && !this.isSystemGenerated) this.isFake=true     //marking all reported news as fake
+  next()
 })
 
 export const News = mongoose.model<INews>("News", NewsSchema);
