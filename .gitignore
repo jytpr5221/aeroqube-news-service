@@ -1,0 +1,10 @@
+news-service/node_modules/
+news-service/build/
+news-service/.env
+
+user-service/node_modules/
+user-service/build/
+user-service/.env
+
+
+api-gateway/node_modules/

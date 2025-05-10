@@ -1,0 +1,8 @@
+
+{
+    "ignore": [".git", "node_modules", "build"],
+    "watch": ["./src"],
+    "exec": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json && node ./build/src/index.js",
+    "ext": "ts"
+  }
+  
