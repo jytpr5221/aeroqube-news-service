@@ -1,10 +1,10 @@
-import { IUser, User, UserType } from "@models/user";
+import { IUser, User, UserType } from "@models/user.model";
 import jwt from "jsonwebtoken";
 import { ERROR } from "@constants/error";
 import { SUCCESS } from "@constants/success";
 import { asyncHandler } from "@utils/AsyncHandler";
 import { Request, Response } from "express";
-import { ILoginUser, IRegisterUser } from "@interfaces/user";
+import { ILoginUser, IRegisterUser } from "@interfaces/user.interface";
 import bcrypt from "bcrypt";
 import { BadRequestError } from "@utils/ApiError";
 

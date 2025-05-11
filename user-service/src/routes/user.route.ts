@@ -1,6 +1,6 @@
 import { SUCCESS } from '@constants/success';
 import { ValidationSource,validateRequest } from '@root/helpers/zodvalidators';
-import { LoginUserSchema, RegisterUserSchmea } from '@root/schemas/user';
+import { LoginUserSchema, RegisterUserSchmea } from '@root/schemas/user.schema';
 import {Request, Response, Router} from 'express';
 import UserController from '@controllers/user.controller';
 
