@@ -4,7 +4,7 @@ export interface IRegisterUser{
     email:string,
     password:string,
     contact?:string,
-    interest?:Schema.Types.ObjectId,
+    interest?:Schema.Types.ObjectId[],
 }
 
 export interface ILoginUser{
