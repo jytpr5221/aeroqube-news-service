@@ -20,9 +20,9 @@ export interface IUser extends Document{
     isActive?:boolean,  //for active reporters
     isLoggedIn:boolean,
     role:UserType,
-    interest:Types.ObjectId,
-    createdAt:Date,
-    updatedAt:Date,
+    interest:Schema.Types.ObjectId,
+    createdAt?:Date,
+    updatedAt?:Date,
 }
 
 export const UserSchema = new Schema<IUser>({
@@ -43,7 +43,7 @@ export const UserSchema = new Schema<IUser>({
     },
     verificationOTP:{
         type:Number,
-        maxLength:6
+        length:6
     },
     isVerified:{
         type:Boolean,
