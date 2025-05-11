@@ -25,6 +25,7 @@ export enum Languages {
   "ta" = "Tamil",
   "te" = "Telugu",
   "ur" = "Urdu",
+  "en" = "English",
 }
 
 export interface ITranslatedService {
@@ -55,10 +56,10 @@ export interface INews extends Document {
   imageURL?: string[];
   tags?: string[];
   location?: string;
-  translatedServices: ITranslatedService[];
+  translatedServices?: ITranslatedService[];
 }
 
-export const NewsSchema = new Schema({
+export const NewsSchema = new Schema<INews>({
   title: {
     type: String,
     required: true,
@@ -116,7 +117,8 @@ export const NewsSchema = new Schema({
     type: String,
   },
   language: {
-    type: Object.values(Languages),
+    type: String,
+    enum: Object.values(Languages),
     default: Languages["en"],
   },
   editedBy: {
