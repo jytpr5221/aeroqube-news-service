@@ -8,3 +8,5 @@ user-service/.env
 
 
 api-gateway/node_modules/
+
+data/

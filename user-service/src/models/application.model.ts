@@ -7,7 +7,7 @@ export enum ApplicationStatus {
     REJECTED='rejected'
 }
 
-export interface IReporterApplication{
+export interface IApplication{
 
     reporterId:Types.ObjectId,
     status:ApplicationStatus,
@@ -17,11 +17,11 @@ export interface IReporterApplication{
     verifiedAt?:Date,
     verifiedBy?:Types.ObjectId,
     organization?:string,
-    bio?:string,
+    bio:string,
     documents:string[]
 }
 
-export const ReporterApplicationSchema = new Schema<IReporterApplication>({
+export const ReporterApplicationSchema = new Schema<IApplication>({
 
     reporterId:{
         type:Schema.Types.ObjectId,
@@ -57,7 +57,8 @@ export const ReporterApplicationSchema = new Schema<IReporterApplication>({
         type:String,
     },
     bio:{
-        type:String
+        type:String,
+        required:true
     },
     documents:[
         {
@@ -66,10 +67,10 @@ export const ReporterApplicationSchema = new Schema<IReporterApplication>({
     ]
 })
 
-ReporterApplicationSchema.pre<IReporterApplication>('save',function(next){
+ReporterApplicationSchema.pre<IApplication>('save',function(next){
 
     this.updatedAt=new Date()
     next()
 })
 
-export const ReporterApplication = mongoose.model<IReporterApplication>('ReporterApplication',ReporterApplicationSchema)
+export const Application = mongoose.model<IApplication>('Application',ReporterApplicationSchema)
