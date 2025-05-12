@@ -1,3 +1,4 @@
+import { JwtPayload } from "jsonwebtoken";
 import { Schema } from "mongoose";
 export interface IRegisterUser{
     name:string,
@@ -10,4 +11,19 @@ export interface IRegisterUser{
 export interface ILoginUser{
     email:string,
     password:string,
+}
+
+export interface IUpdateUser{
+
+    name?:string,
+    contact?:string,
+    interest?:Schema.Types.ObjectId[],
+    email?:string,
+    newpassword?:string,
+    currentpassword?:string
+}
+
+
+export interface IVerifyUser extends JwtPayload{
+    userId:string
 }

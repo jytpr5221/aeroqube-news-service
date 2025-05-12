@@ -23,7 +23,7 @@ export const validateRequest = (schema: ZodSchema, source: ValidationSource= Val
 
             if(error instanceof ZodError){
                 const formattedErrors = error.errors.map(err=>err.message).join(', ')
-                next(new BadRequestError(formattedErrors));
+                return next(new BadRequestError(formattedErrors));
             }
 
             next(error)
