@@ -6,9 +6,10 @@ import { asyncHandler } from "@utils/AsyncHandler";
 import  { Request, Response } from "express";
 import { ILoginUser, IRegisterUser, IUpdateUser, IVerifyUser } from "@interfaces/user.interface";
 import bcrypt from "bcrypt";
-import { BadRequestError, NotAuthorizedError } from "@utils/ApiError";
-import { BlacklistToken } from "@models/blacklistedtokens";
-import { userVerificationEmail } from "@root/helpers/email";
+import { BadRequestError, ForbiddenError, NotAuthorizedError, NotFoundError, ServerError } from "@utils/ApiError";
+import { BlacklistToken } from "@models/blacklistedtokens.model";
+import { sendUserVerificationEmail } from "@root/helpers/email";
+import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpdatedResponse } from "@utils/ApiResponse";
 
 export default class UserController {
 
@@ -17,17 +18,13 @@ export default class UserController {
 
     const existingUser = await User.findOne({ email: email });
     if (existingUser) {
-      return res
-        .status(ERROR.USERS.EMAIL_ALREADY_EXISTS.statusCode)
-        .json({ message: ERROR.USERS.EMAIL_ALREADY_EXISTS.message });
+      throw new BadRequestError('User already exists with this email')
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     if (!hashedPassword) {
-        return res
-            .status(ERROR.SOMETHING_WENT_WRONG.statusCode)
-            .json({ message: ERROR.SOMETHING_WENT_WRONG.message });
-        }
+        throw new ServerError('Something went wrong while hashing password')
+    }
 
     const user = await User.create({
       name: name,
@@ -42,16 +39,24 @@ export default class UserController {
     });
 
     if (!user) {
-      return res
-        .status(ERROR.SOMETHING_WENT_WRONG.statusCode)
-        .json({ message: ERROR.SOMETHING_WENT_WRONG.message });
+      throw new ServerError('Something went wrong while creating user')
     }
 
-    await userVerificationEmail(email)
+    
+    const token = jwt.sign({ email:email },process.env.JWT_SECRET, {expiresIn: '15minutes'});
+    const url = `${process.env.BASE_URL}/api/user/verify/?verifytoken=${token}`
+    const emailBody = 
+       `
+        <h1>Welcome to Aeroqube News App</h1>
+        <p>Click the link below to verify your email address:</p>
+        <a href="${url}">Verify Email</a>
+        `
+    
+    user.verificationExpirtyTime = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+    await sendUserVerificationEmail(email,emailBody)
 
-    return res.status(SUCCESS.POST_201.statusCode).json({
-      message: `${SUCCESS.POST_201.message}. Verification Email sent successfully !`,
-    });
+    return new ItemCreatedResponse('User Created Successfully', user);
   });
 
 
@@ -65,12 +70,10 @@ export default class UserController {
 
     const decoded = jwt.verify(verifytoken, process.env.JWT_SECRET) as IVerifyUser
 
-    const user = await User.findById(decoded.userId);
+    const user = await User.findOne({ email: decoded.email });
 
     if (!user) {
-      return res
-        .status(ERROR.USERS.NOT_FOUND.statusCode)
-        .json({ message: ERROR.USERS.NOT_FOUND.message });
+      throw new NotFoundError('User not found')
     }
 
     user.isVerified = true;
@@ -78,10 +81,7 @@ export default class UserController {
 
     await user.save();
 
-    return res.status(SUCCESS.POST_201.statusCode).json({
-      message: SUCCESS.POST_201.message,
-      data: user,
-    });
+    return new ItemCreatedResponse('User Verified Successfully', user);
   })
 
 
@@ -92,9 +92,7 @@ export default class UserController {
     const user = await User.findOne({email:email});
 
     if(!user){
-        return res
-            .status(ERROR.USERS.NOT_FOUND.statusCode)
-            .json({message:ERROR.USERS.NOT_FOUND.message});
+       return new NotFoundError('User not found')
     }
     
     const isPasswordMatch = await bcrypt.compare(password, user.password);
@@ -116,12 +114,9 @@ export default class UserController {
 
     user.password=undefined
 
-    return res.status(SUCCESS.POST_201.statusCode).json({
-        message:SUCCESS.POST_201.message,
-        data:{
-            user:user,
-            token:token
-        }
+    return new ItemCreatedResponse('User Logged In Successfully', {
+        user:user,
+        token:token,
     })
 
 })
@@ -141,26 +136,21 @@ export default class UserController {
     });
 
     if (!blacklistToken) {
-      return res
-        .status(ERROR.SOMETHING_WENT_WRONG.statusCode)
-        .json({ message: ERROR.SOMETHING_WENT_WRONG.message });
+      throw new ServerError('Something went wrong while blacklisting token')
     }
 
     const existingUser = await User.findById(user.userId);
 
     if (!existingUser) {
-      return res
-        .status(ERROR.USERS.NOT_FOUND.statusCode)
-        .json({ message: ERROR.USERS.NOT_FOUND.message });
+      throw new NotFoundError('User not found')
     }
 
     existingUser.isLoggedIn = false;
     await existingUser.save();
 
-    return res.status(SUCCESS.POST_201.statusCode).json({
-      message: 'User logged out successfully'
+    return new ItemDeletedResponse('User Logged Out Successfully');
 
-    });
+    
   })
 
 
@@ -171,38 +161,28 @@ export default class UserController {
     const existingUser = await User.findById(userId);
 
     if (!existingUser) {
-      return res
-        .status(ERROR.USERS.NOT_FOUND.statusCode)
-        .json({ message: ERROR.USERS.NOT_FOUND.message });
+      throw new NotFoundError('User not found')
     }
 
     existingUser.password = undefined;
 
-    return res.status(SUCCESS.GET_200.statusCode).json({
-      message: SUCCESS.GET_200.message,
-      data: existingUser,
-    });
+    return new ItemFetchedResponse('User Fetched Successfully', existingUser);
   })
 
 
   public getAllUsers = asyncHandler(async (req: Request, res: Response) => {
 
     if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
-      throw new NotAuthorizedError('You are not authorized to access this resource')
+      throw new ForbiddenError('You are not authorized to access this resource')
     }
 
     const users = await User.find({}).select("-password");
 
     if (!users) {
-      return res
-        .status(ERROR.USERS.NOT_FOUND.statusCode)
-        .json({ message: ERROR.USERS.NOT_FOUND.message });
+      return new NotFoundError('No Users found')
     }
 
-    return res.status(SUCCESS.GET_200.statusCode).json({
-      message: SUCCESS.GET_200.message,
-      data: users,
-    });
+    return new ItemFetchedResponse('Users Fetched Successfully', users);
   })
 
   
@@ -214,17 +194,13 @@ export default class UserController {
     }).select("-password");
 
     if (!user) {
-      return res
-        .status(ERROR.USERS.NOT_FOUND.statusCode)
-        .json({ message: ERROR.USERS.NOT_FOUND.message });
+      return new NotFoundError('User not found')
     }
 
-    return res.status(SUCCESS.GET_200.statusCode).json({
-      message: SUCCESS.GET_200.message,
-      data: user,
+    return new ItemFetchedResponse('User Fetched Successfully', user);
     });
 
-  })
+
 
 
   public updateUser = asyncHandler(async (req: Request, res: Response) => {
@@ -235,9 +211,7 @@ export default class UserController {
 
     const existingUser = await User.findById(userId)
     if(!existingUser){
-        return res
-            .status(ERROR.USERS.NOT_FOUND.statusCode)
-            .json({message:ERROR.USERS.NOT_FOUND.message});
+        return new NotFoundError('User not found')
     }
 
     existingUser.name= name || existingUser.name,
@@ -255,18 +229,14 @@ export default class UserController {
 
     const updatedUser = await existingUser.save();
     if(!updatedUser){
-        return res
-            .status(ERROR.SOMETHING_WENT_WRONG.statusCode)
-            .json({message:ERROR.SOMETHING_WENT_WRONG.message});
+        return new ServerError('Something went wrong while updating user')
     }
 
     updatedUser.password=undefined
 
 
-    return res.status(SUCCESS.PUT_200_DATA.statusCode).json({
-        message:SUCCESS.PUT_200_DATA.message,
-        data:updatedUser
-    })
+    return new ItemUpdatedResponse('User Updated Successfully', updatedUser);
+
 
   })
 
@@ -278,9 +248,7 @@ export default class UserController {
 
     const existingUser = await User.findById(userId)
     if(!existingUser){
-        return res
-            .status(ERROR.USERS.NOT_FOUND.statusCode)
-            .json({message:ERROR.USERS.NOT_FOUND.message});
+        return new NotFoundError('User not found')
     }
 
     const token = req.headers.authorization?.split(" ")[1];
@@ -294,9 +262,8 @@ export default class UserController {
 
     await existingUser.deleteOne();
 
-    return res.status(SUCCESS.DELETION_SUCCESS.statusCode).json({
-        message:SUCCESS.DELETION_SUCCESS.message,
-    })
+    return new ItemDeletedResponse('User Deleted Successfully');
+
 
   })
 

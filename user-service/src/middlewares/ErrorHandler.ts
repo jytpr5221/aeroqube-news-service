@@ -1,28 +1,38 @@
 // middleware/errorHandler.ts
 import { Request, Response, NextFunction } from "express";
 import { CustomError } from "@utils/ApiError";
+import mongoose from "mongoose";
 
 export const errorHandler = (
-  err: Error,
+  err: any,
   req: Request,
   res: Response,
   next: NextFunction
 ): Response => {
-  console.log(`Error occurred [${process.env.NODE_ENV}]:`, err);
+  let error = err;
+  console.log(`Running in ${process.env.NODE_ENV} mode`);
 
-  if (err instanceof CustomError) {
-    const serialized = err.serializeErrors();
-    return res.status(serialized.statusCode).json({
-      status: serialized.status,
-      message: serialized.message,
-      ...(process.env.NODE_ENV === "development" ? { stack: err.stack } : {}),
-    });
+  if (!(error instanceof CustomError)) {
+    const statusCode =
+      error.statusCode || error instanceof mongoose.Error ? 400 : 500;
+    const message = error.message || 'Something went wrong';
+
+    error = new CustomError(
+      statusCode,
+      message,
+      error?.errors || [],
+      err.stack
+    );
   }
 
-  // Handle unknown errors
-  return res.status(500).json({
-    status: "error",
-    message: "Something went wrong.",
-    ...(process.env.NODE_ENV === "development" ? { stack: err.stack } : {}),
-  });
+  const response = {
+    message: error.message,
+    statusCode: error.statusCode,
+    ...(error.errors && { errors: error.errors }),
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
+  };
+
+  console.log(response);
+  return res.status(error.statusCode).json(response);
 };
+

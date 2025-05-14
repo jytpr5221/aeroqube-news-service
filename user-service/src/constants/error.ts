@@ -38,5 +38,5 @@ const ERROR_CODES = {
         statusCode: ERROR_CODES[404],
         message: "User not found.",
       },
-    },
+    }
   });

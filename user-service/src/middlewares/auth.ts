@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { BlacklistToken } from '@models/blacklistedtokens';
+import { BlacklistToken } from '@models/blacklistedtokens.model';
 import { BadRequestError } from '@utils/ApiError';
 import { JwtPayload } from 'jsonwebtoken';
 

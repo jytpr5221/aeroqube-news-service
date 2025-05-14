@@ -25,5 +25,5 @@ export interface IUpdateUser{
 
 
 export interface IVerifyUser extends JwtPayload{
-    userId:string
+    email:string
 }
