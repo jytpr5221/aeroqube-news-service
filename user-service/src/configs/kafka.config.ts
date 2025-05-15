@@ -5,7 +5,7 @@ export class KafkaService {
 
   constructor(brokers: string[] = ["localhost:9092"]) {
     this.kafka = new Kafka({
-      clientId: "kafka-service",
+      clientId: "aeroqube-newsapp-service",
       brokers,
     });
   }

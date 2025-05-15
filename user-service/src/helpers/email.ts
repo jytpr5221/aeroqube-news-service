@@ -12,7 +12,7 @@ const transporter =  nodemailer.createTransport({
     }
   });
 
-export const sendUserVerificationEmail = async(email:string,body:string)=>{
+export const sendEmail = async(email:string,body:string)=>{
 
     try {
    

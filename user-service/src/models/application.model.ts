@@ -1,4 +1,4 @@
-import mongoose, { Schema, Types } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
 
 export enum ApplicationStatus {
 
@@ -7,9 +7,9 @@ export enum ApplicationStatus {
     REJECTED='rejected'
 }
 
-export interface IApplication{
-
+export interface IApplication extends Document{
     reporterId:Types.ObjectId,
+    profileImage?:string,
     status:ApplicationStatus,
     message?:string,
     createdAt:Date,
@@ -18,7 +18,7 @@ export interface IApplication{
     verifiedBy?:Types.ObjectId,
     organization?:string,
     bio:string,
-    documents:string[]
+    documents?:string[],
 }
 
 export const ReporterApplicationSchema = new Schema<IApplication>({

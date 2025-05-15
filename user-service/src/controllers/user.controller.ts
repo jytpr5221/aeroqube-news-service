@@ -1,15 +1,14 @@
 import { IUser, User, UserType } from "@models/user.model";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { ERROR } from "@constants/error";
-import { SUCCESS } from "@constants/success";
 import { asyncHandler } from "@utils/AsyncHandler";
 import  { Request, Response } from "express";
 import { ILoginUser, IRegisterUser, IUpdateUser, IVerifyUser } from "@interfaces/user.interface";
 import bcrypt from "bcrypt";
 import { BadRequestError, ForbiddenError, NotAuthorizedError, NotFoundError, ServerError } from "@utils/ApiError";
 import { BlacklistToken } from "@models/blacklistedtokens.model";
-import { sendUserVerificationEmail } from "@root/helpers/email";
 import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpdatedResponse } from "@utils/ApiResponse";
+import { kafkaService,producer } from "..";
+import { sendEmail } from "@root/helpers/email";
 
 export default class UserController {
 
@@ -54,7 +53,10 @@ export default class UserController {
     
     user.verificationExpirtyTime = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
-    await sendUserVerificationEmail(email,emailBody)
+
+    // Send verification email
+    
+    await sendEmail(email, emailBody)
 
     return new ItemCreatedResponse('User Created Successfully', user);
   });
