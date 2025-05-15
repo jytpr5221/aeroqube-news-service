@@ -29,7 +29,7 @@ export default class ApplicationController{
 
         const application = await Application.create({
             reporterId:userId,
-            status:'pending',
+            status:ApplicationStatus.PENDING,
             bio,
             organization,
             createdAt:new Date()
