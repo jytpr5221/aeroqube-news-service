@@ -7,7 +7,7 @@ import bcrypt from "bcrypt";
 import { BadRequestError, ForbiddenError, NotAuthorizedError, NotFoundError, ServerError } from "@utils/ApiError";
 import { BlacklistToken } from "@models/blacklistedtokens.model";
 import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpdatedResponse } from "@utils/ApiResponse";
-import { kafkaService,producer } from "..";
+// import { kafkaService,producer } from "..";
 import { sendEmail } from "@root/helpers/email";
 
 export default class UserController {
@@ -123,6 +123,24 @@ export default class UserController {
 
 })
 
+  public getMyProfile = asyncHandler(async (req: Request, res: Response) => {
+    const user = req.user 
+
+    if(!user){
+      throw new NotAuthorizedError('User not found')
+    }
+
+    const existingUser = await User.findById(user.userId);
+
+    if (!existingUser) {
+      throw new NotFoundError('User not found')
+    }
+
+    existingUser.password = undefined;
+
+    return new ItemFetchedResponse('User Fetched Successfully', existingUser);
+  })
+
 
   public logoutUser = asyncHandler(async (req: Request, res: Response) => {
 
@@ -201,8 +219,6 @@ export default class UserController {
 
     return new ItemFetchedResponse('User Fetched Successfully', user);
     });
-
-
 
 
   public updateUser = asyncHandler(async (req: Request, res: Response) => {

@@ -4,7 +4,7 @@ export const asyncHandler =(fn:Function)=>{
     return (req:Request, res:Response, next:NextFunction) => {
         try{
             const response = fn(req, res, next);
-              res.status(response.statusCode).json({
+            return res.status(response.statusCode).json({
                 message: response.message,
                 data: response.data,
                 statusCode: response.statusCode,

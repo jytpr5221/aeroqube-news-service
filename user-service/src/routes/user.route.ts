@@ -26,6 +26,8 @@ export default class UserRouter {
 
        this.router.post('/register',validateRequest(RegisterUserSchmea,ValidationSource.BODY), userController.registerUser)
        this.router.post('/login',validateRequest(LoginUserSchema,ValidationSource.BODY), userController.loginuser);
+       this.router.post('/logout',authenticateToken, userController.logoutUser);
+       this.router.get('/my-profile',authenticateToken, userController.getMyProfile);
        this.router.get('/user-profile/:userId',authenticateToken,validateRequest(GetUserByIdSchema,ValidationSource.PARAMS), userController.getUserProfile);
        this.router.get('/user-profile',authenticateToken,validateRequest(GetUserByQuerySchema,ValidationSource.QUERY), userController.getUserByQuery);
        this.router.get('/all-users', authenticateToken, userController.getAllUsers);

@@ -78,7 +78,27 @@ export default class ApplicationController{
         const applicationId = req.params.applicationId 
         // const userId = req.user._id
 
-        const application = await Application.findById(applicationId)
+        const application = await Application.aggregate([
+            {
+                $match:{
+                    _id:applicationId
+                }
+            },
+            {
+                $lookup: {
+                    from: "users", 
+                    localField: "reporterId",
+                    foreignField: "_id",
+                    as: "reporter"
+                  }
+            },
+            
+            {
+                $project: {
+                 'reporter.password':0
+                }
+            }
+        ])
 
         if(!application)
             throw new NotFoundError('No such Application exists')

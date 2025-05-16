@@ -24,7 +24,8 @@
       "@routes/*": ["src/routes/*"],
       "@schemes/*": ["src/schemes/*"],
       "@utils/*": ["src/utils/*"],
-      "@root/*": ["src/*"]
+      "@root/*": ["src/*"],
+      "@helpers/*": ["src/helpers/*"]
     }
   },
   "include": ["src/**/*"],

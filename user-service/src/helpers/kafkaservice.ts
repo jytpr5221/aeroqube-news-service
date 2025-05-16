@@ -17,6 +17,6 @@ export async function configureKafka (){
   console.log("Application Consumer connected");
   })
 
-
-
 }
+
+export {kafkaProducer, applicationConsumer}

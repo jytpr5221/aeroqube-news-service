@@ -1,8 +1,9 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 export enum NewsStatus {
-  DRAFT = "draft",
+  PENDING = "pending",
   PUBLISHED = "published",
+  ACCEPTED = "accepted",
   REJECTED = "rejected",
 }
 
@@ -80,7 +81,7 @@ export const NewsSchema = new Schema<INews>({
   status: {
     type: String,
     enum: Object.values(NewsStatus),
-    default: NewsStatus.DRAFT,
+    default: NewsStatus.PENDING,
   },
   reportedBy: {
     type: Schema.Types.ObjectId,
