@@ -17,7 +17,7 @@ export const validateRequest = (schema: ZodSchema, source: ValidationSource= Val
 
         try{
             const data = schema.parse(req[source]);
-            req[source] = data;
+            Object.assign(req.query, data);
             next();
         }catch(error){
 

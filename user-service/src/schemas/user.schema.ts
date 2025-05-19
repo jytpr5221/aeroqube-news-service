@@ -45,7 +45,7 @@ export const LoginUserSchema = z.object({
 })
 
 export const verifyUserSchema = z.object({
-    token:z.string({
+    verifytoken:z.string({
         required_error:'Token is required!',
         invalid_type_error:'Token should be a string'
     })

@@ -8,6 +8,8 @@ export class KafkaService {
       clientId: "aeroqube-newsapp-service",
       brokers,
     });
+
+    console.log("Kafka service started");
   }
 
   public createProducer() {

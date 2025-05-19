@@ -2,23 +2,24 @@ import { Schema, model, Types } from "mongoose";
 
 export interface IUserSession {
   userId: Schema.Types.ObjectId;
-  loginTime?: number;
-  logoutTime?: number;
-  isLogIn: boolean;
+  loginTime?: Date;
+  logoutTime?: Date;
+  isLoggedIn: boolean;
   platform: string;
-  ip: number;
+  ip: string;
   createdOn: Date;
 }
 
 const UserSessionsSchema = new Schema<IUserSession>({
   userId: { type: Schema.Types.ObjectId, ref: "User" },
-  loginTime: { type: Number },
-  logoutTime: { type: Number },
-  isLogIn: { type: Boolean, default: true,required:true },
+  loginTime: { type: Date },
+  logoutTime: { type: Date },
+  isLoggedIn: { type: Boolean, default: true,required:true },
   platform: { type: String },
-  ip: { type: Number, required: true },
+  ip: { type: String, required: true,unique:true },
   createdOn: { type: Date, default: Date.now },
 });
+// we can add FCM token from client if user allows notification
 
 
 export const UserSession = model<IUserSession>(

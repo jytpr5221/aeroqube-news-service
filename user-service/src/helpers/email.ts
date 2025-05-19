@@ -2,6 +2,10 @@ import { User } from "@models/user.model";
 import { BadRequestError, ServerError } from "@utils/ApiError";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+
+dotenv.config({ path: "./.env" });
+
 
 const transporter =  nodemailer.createTransport({
     host: "sandbox.smtp.mailtrap.io",
@@ -14,9 +18,9 @@ const transporter =  nodemailer.createTransport({
 
 export const sendEmail = async(email:string,body:string)=>{
 
-    try {
-   
 
+  console.log("Sending email to", email);
+    try {
     const mailOptions ={
 
         from:process.env.MAIL_SERVICE,
@@ -27,10 +31,7 @@ export const sendEmail = async(email:string,body:string)=>{
     }
 
     const mailResponse = await transporter.sendMail(mailOptions);
-
-    if(!mailResponse)
-        throw new BadRequestError('Email not sent');
-
+    console.log("Email sent successfully");
     return mailResponse 
     } catch (error) {
 

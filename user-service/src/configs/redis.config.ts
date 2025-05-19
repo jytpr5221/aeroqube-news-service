@@ -9,6 +9,9 @@ export default class RedisService{
             host,
             port
         })
+        this.redis.on('connect', () => {
+            console.log('Connected to Redis');
+        });
     }
 
     public getRedisClient(){
@@ -36,3 +39,6 @@ export default class RedisService{
         await this.redis.del(key);
     }
 }
+
+export const redisService = new RedisService();
+export const redisClient = redisService.getRedisClient();

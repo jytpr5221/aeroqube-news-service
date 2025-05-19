@@ -8,7 +8,10 @@ import { BadRequestError, ForbiddenError, NotAuthorizedError, NotFoundError, Ser
 import { BlacklistToken } from "@models/blacklistedtokens.model";
 import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpdatedResponse } from "@utils/ApiResponse";
 // import { kafkaService,producer } from "..";
-import { sendEmail } from "@root/helpers/email";
+import { publish } from "@root/helpers/kafkaservice";
+import { DeviceTokenService, UserServiceEvents } from "@constants/kafkatopics";
+import requestIp from 'request-ip';
+import { UserSession } from "@models/usersession.model";
 
 export default class UserController {
 
@@ -43,7 +46,7 @@ export default class UserController {
 
     
     const token = jwt.sign({ email:email },process.env.JWT_SECRET, {expiresIn: '15minutes'});
-    const url = `${process.env.BASE_URL}/api/user/verify/?verifytoken=${token}`
+    const url = `${process.env.BASE_URL}/api/v0/user/verify/?verifytoken=${token}`
     const emailBody = 
        `
         <h1>Welcome to Aeroqube News App</h1>
@@ -56,7 +59,14 @@ export default class UserController {
 
     // Send verification email
     
-    await sendEmail(email, emailBody)
+    publish({
+      topic:'send-email',
+      event: UserServiceEvents.SEND_VERIFICATION_EMAIL,
+      message:{
+        email:email,
+        emailBody:emailBody,
+      }
+    })
 
     return new ItemCreatedResponse('User Created Successfully', user);
   });
@@ -96,6 +106,24 @@ export default class UserController {
     if(!user){
        return new NotFoundError('User not found')
     }
+
+    const checkLoggedInSessions = await UserSession.aggregate([
+      {
+        $match: {
+          userId: user._id,
+        },
+      },
+      {
+        $group: {
+          _id: "$userId",
+          count: { $sum: 1 },
+        },
+      },
+    ])
+
+    if(checkLoggedInSessions && checkLoggedInSessions.length >= 3){
+      throw new BadRequestError('You have reached the maximum number of login sessions: 3')
+    }
     
     const isPasswordMatch = await bcrypt.compare(password, user.password);
    
@@ -111,6 +139,20 @@ export default class UserController {
     const token:string = jwt.sign(payload,process.env.JWT_SECRET as string,{expiresIn:'15d'});
     
     user.isLoggedIn = true;
+    const clientIp = requestIp.getClientIp(req);
+
+    publish({
+      topic:'device-token-service',
+      event: DeviceTokenService.CREATE_DEVICE_TOKEN,
+      message:{
+        userId:user._id,
+        loginTime:new Date(),
+        isLoggedIn:true,
+        platform:req.headers['user-agent'],
+        ip:clientIp,
+      }
+      // here we can capture the FCM token from the client and save it in the database if notification is allowed
+    })
 
     await user.save();
 
@@ -130,7 +172,9 @@ export default class UserController {
       throw new NotAuthorizedError('User not found')
     }
 
-    const existingUser = await User.findById(user.userId);
+    // console.log(user)
+
+    const existingUser = await User.findById(user.id);
 
     if (!existingUser) {
       throw new NotFoundError('User not found')
@@ -159,7 +203,7 @@ export default class UserController {
       throw new ServerError('Something went wrong while blacklisting token')
     }
 
-    const existingUser = await User.findById(user.userId);
+    const existingUser = await User.findById(user.id);
 
     if (!existingUser) {
       throw new NotFoundError('User not found')
@@ -167,6 +211,17 @@ export default class UserController {
 
     existingUser.isLoggedIn = false;
     await existingUser.save();
+
+    const clientIp = requestIp.getClientIp(req);
+
+    publish({
+      topic:'device-token-service',
+      event: DeviceTokenService.DELETE_DEVICE_TOKEN,
+      message:{
+        userId:user.id,
+        ip:clientIp
+      }
+    })
 
     return new ItemDeletedResponse('User Logged Out Successfully');
 
