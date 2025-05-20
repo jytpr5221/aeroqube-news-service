@@ -101,7 +101,7 @@ export default class UserController {
 
     const {email, password} = req.body as ILoginUser;
 
-    const user = await User.findOne({email:email});
+    const user = await User.findOne({email:email,isVerified:true})
 
     if(!user){
        return new NotFoundError('User not found')
