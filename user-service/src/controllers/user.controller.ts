@@ -278,11 +278,11 @@ export default class UserController {
 
   public updateUser = asyncHandler(async (req: Request, res: Response) => {
 
-    const {userId} = req.user
+    const {id} = req.user
 
     const {name,contact,interest,email,newpassword,currentpassword} = req.body as IUpdateUser
 
-    const existingUser = await User.findById(userId)
+    const existingUser = await User.findById(id)
     if(!existingUser){
         return new NotFoundError('User not found')
     }
