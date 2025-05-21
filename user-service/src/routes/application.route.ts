@@ -11,6 +11,7 @@ import {
 import { Request, Response, Router } from 'express';
 import ApplicationController from '@controllers/application.controller';
 import { authenticateToken } from '@middlewares/auth';
+import { upload } from '@middlewares/multer';
 
 class ApplicationRouter {
     private readonly router: Router;
@@ -32,6 +33,7 @@ class ApplicationRouter {
         this.router.post(
             '/create',
             authenticateToken,
+            upload.array('documents',5),
             validateRequest(CreateApplicationSchema, ValidationSource.BODY),
             applicationController.createApplication
         );
@@ -40,6 +42,7 @@ class ApplicationRouter {
         this.router.put(
             '/update/:applicationId',
             authenticateToken,
+            upload.array('documents',5),
             validateRequest(ApplicationIdSchema, ValidationSource.PARAMS),
             validateRequest(UpdateApplicationSchema, ValidationSource.BODY),
             applicationController.updateApplication

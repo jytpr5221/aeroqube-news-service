@@ -7,6 +7,7 @@ import { UserSession } from "@models/usersession.model";
 import { Application, ApplicationStatus } from "@models/application.model";
 import { ServerError } from "@utils/ApiError";
 import { redisService } from "@configs/redis.config";
+import { User, UserType } from "@models/user.model";
 
 let kafkaProducer: Producer;
 let emailConsumer: Consumer;
@@ -109,10 +110,18 @@ export async function configureKafka() {
               status: value.status,
               bio: value.bio,
               organization: value.organization,
-              createdAt: value.createdAt
+              createdAt: value.createdAt,
+              documents: value.documents,
             });
             console.log("Application created", application);
             
+            const reporter = await User.findById(value.reporterId);
+            if (!reporter) {
+              throw new ServerError("User not found");
+            }
+            reporter.role = UserType.PENDINGREPORTER; 
+            await reporter.save();
+            console.log("User role updated", reporter);
             // Invalidate relevant caches
             await Promise.all([
               redisService.del(`application:${application._id}`),
@@ -133,7 +142,10 @@ export async function configureKafka() {
               value.applicationId,
               {
                 bio: value.bio,
-                organization: value.organization
+                organization: value.organization,
+                documents: value.documents,
+                status: value.status,
+                updatedAt: new Date(),
               },
               { new: true }
             );
@@ -168,10 +180,24 @@ export async function configureKafka() {
               },
               { new: true }
             );
+
             if (!application) {
               throw new ServerError("Application not found");
             }
             console.log("Application verified", application);
+
+            if(value.status === ApplicationStatus.ACCEPTED) {
+
+              const user = await User.findById(value.reporterId);
+              if (!user) {
+                throw new ServerError("User not found");
+              }
+              user.role=UserType.REPORTER
+              user.isActive=true
+              await user.save();
+              console.log("User role updated", user);
+            }
+            
             
             // Invalidate relevant caches
             await Promise.all([

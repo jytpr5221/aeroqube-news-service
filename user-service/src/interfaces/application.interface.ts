@@ -8,7 +8,7 @@ export interface ICreateApplication{
 
 
 export interface IUpdateApplication {
-    bio:string,
+    bio?:string,
     organization?:string
 }
 

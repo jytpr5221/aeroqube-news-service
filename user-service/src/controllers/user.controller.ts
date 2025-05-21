@@ -7,7 +7,6 @@ import bcrypt from "bcrypt";
 import { BadRequestError, ForbiddenError, NotAuthorizedError, NotFoundError, ServerError } from "@utils/ApiError";
 import { BlacklistToken } from "@models/blacklistedtokens.model";
 import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpdatedResponse } from "@utils/ApiResponse";
-// import { kafkaService,producer } from "..";
 import { publish } from "@root/helpers/kafkaservice";
 import { DeviceTokenService, UserServiceEvents } from "@constants/kafkatopics";
 import requestIp from 'request-ip';
@@ -37,7 +36,7 @@ export default class UserController {
       isVerified: false,
       isActive: false,
       isLoggedIn: false,
-      role: UserType.USER,
+      role: UserType.SUPERADMIN,
     });
 
     if (!user) {
@@ -123,7 +122,7 @@ export default class UserController {
 
     if(checkLoggedInSessions && checkLoggedInSessions.length >= 3){
       throw new BadRequestError('You have reached the maximum number of login sessions: 3')
-    }
+    }// currently bypassing the ip checks...can be included later
     
     const isPasswordMatch = await bcrypt.compare(password, user.password);
    
@@ -292,6 +291,9 @@ export default class UserController {
     existingUser.interest= interest || existingUser.interest,
     existingUser.email= email || existingUser.email
 
+    if(newpassword && !currentpassword){
+        throw new BadRequestError('Current Password is required to update password')
+    }
     if(newpassword && currentpassword){
         const isPasswordMatch = await bcrypt.compare(currentpassword, existingUser.password);
         if(!isPasswordMatch){
@@ -340,5 +342,193 @@ export default class UserController {
 
   })
 
+  public addSuperAdmin = asyncHandler(async (req: Request, res: Response) => {
+
+    if(req.user.role !== UserType.SUPERADMIN) {
+      throw new ForbiddenError('You are not authorized to access this resource')
+    }
+
+    const {name, email, password,} = req.body as IRegisterUser;
+
+    const existingUser = await User.findOne({ email: email });
+    if (existingUser) {
+      throw new BadRequestError('Super-Admin already exists with this email')
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!hashedPassword) {
+        throw new ServerError('Something went wrong while hashing password')
+    }
+
+    const user = await User.create({
+      name: name,
+      email: email,
+      password: hashedPassword,
+      isVerified: false,
+      isActive: false,
+      isLoggedIn: false,
+      role: UserType.SUPERADMIN,
+    });
+
+    if (!user) {
+      throw new ServerError('Something went wrong while creating user')
+    }
+
+    const token = jwt.sign({ email:email },process.env.JWT_SECRET, {expiresIn: '15minutes'});
+    const url = `${process.env.BASE_URL}/api/v0/user/verify/?verifytoken=${token}`
+    const emailBody = 
+       `
+        <h1>Welcome to Aeroqube News App-Super Admin Verification</h1>
+        <p>Click the link below to verify your email address:</p>
+        <a href="${url}">Verify Email</a>
+        `
+    
+    user.verificationExpirtyTime = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    // Send verification email
+    
+    publish({
+      topic:'send-email',
+      event: UserServiceEvents.SEND_VERIFICATION_EMAIL,
+      message:{
+        email:email,
+        emailBody:emailBody,
+      }
+    })
+
+    return new ItemCreatedResponse('SuperAdmin Created Successfully', user);
+  });
+
+  public addEditor = asyncHandler(async (req: Request, res: Response) => {
+
+    if(req.user.role !== UserType.SUPERADMIN && req.user.role !== UserType.ADMIN) {
+      throw new ForbiddenError('You are not authorized to access this resource')
+    }
+
+    const {name, email, password,} = req.body as IRegisterUser;
+
+    const existingUser = await User.findOne({ email: email });
+    if (existingUser) {
+      throw new BadRequestError('Editor already exists with this email')
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!hashedPassword) {
+        throw new ServerError('Something went wrong while hashing password')
+    }
+
+    const user = await User.create({
+      name: name,
+      email: email,
+      password: hashedPassword,
+      isVerified: false,
+      isActive: false,
+      isLoggedIn: false,
+      role: UserType.EDITOR,
+    });
+
+    if (!user) {
+      throw new ServerError('Something went wrong while creating user')
+    }
+
+    const token = jwt.sign({ email:email },process.env.JWT_SECRET, {expiresIn: '15minutes'});
+    const url = `${process.env.BASE_URL}/api/v0/user/verify/?verifytoken=${token}`
+    const emailBody = 
+       `
+        <h1>Welcome to Aeroqube News App-Editor Verification</h1>
+        <p>Click the link below to verify your email address:</p>
+        <a href="${url}">Verify Email</a>
+        `
+    
+    user.verificationExpirtyTime = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    // Send verification email
+    
+    publish({
+      topic:'send-email',
+      event: UserServiceEvents.SEND_VERIFICATION_EMAIL,
+      message:{
+        email:email,
+        emailBody:emailBody,
+      }
+    })
+
+    return new ItemCreatedResponse('Editor Created Successfully', user);
+  })
+
+  public addAdmin = asyncHandler(async (req: Request, res: Response) => {
+    if(req.user.role !== UserType.SUPERADMIN) {
+      throw new ForbiddenError('You are not authorized to access this resource')
+    }
+
+    const {name, email, password,} = req.body as IRegisterUser;
+
+    const existingUser = await User.findOne({ email: email });
+    if (existingUser) {
+      throw new BadRequestError('Admin already exists with this email')
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!hashedPassword) {
+        throw new ServerError('Something went wrong while hashing password')
+    }
+
+    const user = await User.create({
+      name: name,
+      email: email,
+      password: hashedPassword,
+      isVerified: false,
+      isActive: false,
+      isLoggedIn: false,
+      role: UserType.ADMIN,
+    });
+
+    if (!user) {
+      throw new ServerError('Something went wrong while creating user')
+    }
+
+    const token = jwt.sign({ email:email },process.env.JWT_SECRET, {expiresIn: '15minutes'});
+    const url = `${process.env.BASE_URL}/api/v0/user/verify/?verifytoken=${token}`
+    const emailBody = 
+       `
+        <h1>Welcome to Aeroqube News App-Admin Verification</h1>
+        <p>Click the link below to verify your email address:</p>
+        <a href="${url}">Verify Email</a>
+        `
+    
+    user.verificationExpirtyTime = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    // Send verification email
+    
+    publish({
+      topic:'send-email',
+      event: UserServiceEvents.SEND_VERIFICATION_EMAIL,
+      message:{
+        email:email,
+        emailBody:emailBody,
+      }
+    })
+
+    return new ItemCreatedResponse('Admin Created Successfully', user);
+  })
+  
+  public getUserByRole = asyncHandler(async (req: Request, res: Response) => {
+    if(req.user.role !== UserType.SUPERADMIN && req.user.role !== UserType.ADMIN) {
+      throw new ForbiddenError('You are not authorized to access this resource')
+    }
+
+    const {role} = req.query as {role: string}
+
+    const users = await User.find({role:role}).select("-password");
+
+    if (!users) {
+      return new NotFoundError('No Users found')
+    }
+
+    return new ItemFetchedResponse('Users Fetched Successfully', users);
+  })
 }
 

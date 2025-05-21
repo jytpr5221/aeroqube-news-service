@@ -22,7 +22,6 @@ export const CreateApplicationSchema = z.object({
 
 export const UpdateApplicationSchema = z.object({
     bio: z.string({
-        required_error: "Bio is required",
         invalid_type_error: "Bio must be a string"
     })
     .trim()
@@ -31,20 +30,13 @@ export const UpdateApplicationSchema = z.object({
     .optional(),
 
     organization: z.string({
-        required_error: "Organization is required",
         invalid_type_error: "Organization must be a string"
     })
     .trim()
     .min(2, { message: "Organization name must be at least 2 characters long" })
     .max(100, { message: "Organization name must be at most 100 characters long" })
     .optional()
-}).refine(
-    (data) => data.bio || data.organization,
-    {
-        message: "At least one field must be provided for update",
-        path: []
-    }
-);
+})
 
 export const VerifyApplicationSchema = z.object({
     status: z.enum([ApplicationStatus.ACCEPTED, ApplicationStatus.REJECTED], {
