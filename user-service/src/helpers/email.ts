@@ -25,7 +25,7 @@ export const sendEmail = async(email:string,body:string)=>{
 
         from:process.env.MAIL_SERVICE,
         to:email,
-        subject:"Welcome to Aeroqube News! Please verify your email",
+        subject:"Welcome to Aeroqube News Service!",
         html:body
         
     }

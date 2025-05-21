@@ -186,8 +186,6 @@ export async function configureKafka() {
             }
             console.log("Application verified", application);
 
-            if(value.status === ApplicationStatus.ACCEPTED) {
-
               const user = await User.findById(value.reporterId);
               if (!user) {
                 throw new ServerError("User not found");
@@ -196,7 +194,7 @@ export async function configureKafka() {
               user.isActive=true
               await user.save();
               console.log("User role updated", user);
-            }
+            
             
             
             // Invalidate relevant caches
@@ -209,12 +207,12 @@ export async function configureKafka() {
             ]);
 
             // Send verification email
-            if (value.email) {
+            if (user.email) {
               const emailBody = `
                 <h1>Application Verified!!🎉🎉</h1>
                 <p>Your reporter application has been verified. You can now start contributing to Aeroqube News.</p>
               `;
-              sendEmail(value.email, emailBody);
+              sendEmail(user.email, emailBody);
             }
           } catch (error) {
             console.error("Error verifying application", error);
