@@ -13,8 +13,10 @@ export const errorHandler = (
   console.log(`Running in ${process.env.NODE_ENV} mode`);
 
   if (!(error instanceof CustomError)) {
-    const statusCode =
-      error.statusCode || error instanceof mongoose.Error ? 400 : 500;
+
+    const statusCode = (error.statusCode || error instanceof mongoose.Error) ? 400 : 500;
+
+    console.log(error)
     const message = error.message || 'Something went wrong';
 
     error = new CustomError(

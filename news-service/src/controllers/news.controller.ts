@@ -1,11 +1,16 @@
 import { NewsServiceEvents, UserType } from "@constants/types";
-import { IDeleteNews, IUpdateNews, IUploadNews } from "@interfaces/news.interface";
+import { IDeleteNews, IGetNewsID, IGetNewsReporter, IUpdateNews, IUploadNews } from "@interfaces/news.interface";
 import { INews, News } from "@models/news.model";
-import { ForbiddenError, NotFoundError, ServerError } from "@utils/ApiError";
+import { BadRequestError, ForbiddenError, NotFoundError, ServerError } from "@utils/ApiError";
 import { publish } from "@root/helpers/kafkaservice";
 import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpdatedResponse } from "@utils/ApiResponse";
 import { asyncHandler } from "@utils/AsyncHandler";
 import { Request, Response } from "express";
+import { uploadAttachmentToS3 } from "@utils/s3uploader";
+import fs from "fs/promises";
+import path from "path";
+import { Schema } from "mongoose";
+
 
 export default class NewsController {
   public uploadNews = asyncHandler(async (req: Request, res: Response) => {
@@ -13,12 +18,37 @@ export default class NewsController {
         throw new ForbiddenError("You are not allowed to upload news");
     }
 
+    console.log(req.body)
     const { title, content, category, language, tags, location } = req.body as IUploadNews;
 
-    if(req.files){
-        //handle file upload
+    if(!req.files || (req.files as Express.Multer.File[]).length === 0){
+        throw new BadRequestError("Please upload the related images");
     }
-    
+
+    // Upload images to S3
+    const uploadedFileUrls: string[] = [];
+      console.log(req.files)
+      const files = req.files as Express.Multer.File[];
+      await Promise.all(
+        files.map(async (file) => {
+          try {
+            const filePath = path.join(process.cwd(), "uploads", file.filename);
+
+            const fileBuffer = await fs.readFile(filePath);
+            const result = await uploadAttachmentToS3(
+              file.originalname,
+              fileBuffer,
+              file.mimetype
+            );
+            uploadedFileUrls.push(result.Location);
+            console.log(result.Location)
+            await fs.unlink(filePath);
+          } catch (err) {
+            console.error(`Error handling file ${file.originalname}:`, err);
+          }
+        })
+      );
+    console.log(uploadedFileUrls)
     const response = await publish({
         topic:'news-service',
         event: NewsServiceEvents.UPLOAD_NEWS,
@@ -29,8 +59,9 @@ export default class NewsController {
             language,
             tags,
             location,
-            reporterBy: req.user.id
-        },
+            reporterBy: req.user._id,
+            imageURLs:uploadedFileUrls
+        } ,
     })
 
     if(!response)
@@ -44,7 +75,7 @@ export default class NewsController {
         throw new ForbiddenError("You are not allowed to edit news");
     }
 
-    const { title, content, category, language, tags, location,isFake } = req.body as IUpdateNews;
+    const { title, content, category, language, tags, location, isFake } = req.body as IUpdateNews;
 
     const newsId = req.params.id;
 
@@ -53,6 +84,29 @@ export default class NewsController {
     if(!news)
         throw new NotFoundError("News not found");
 
+    const uploadedFileUrls: string[] = [];
+      console.log(req.files)
+      const files = req.files as Express.Multer.File[];
+      await Promise.all(
+        files.map(async (file) => {
+          try {
+            const filePath = path.join(process.cwd(), "uploads", file.filename);
+
+            const fileBuffer = await fs.readFile(filePath);
+            const result = await uploadAttachmentToS3(
+              file.originalname,
+              fileBuffer,
+              file.mimetype
+            );
+            uploadedFileUrls.push(result.Location);
+            await fs.unlink(filePath);
+          } catch (err) {
+            console.error(`Error handling file ${file.originalname}:`, err);
+          }
+        })
+      );
+
+
     const response = await publish({
         topic:'news-service',
         event: NewsServiceEvents.UPDATE_NEWS,
@@ -60,12 +114,13 @@ export default class NewsController {
             newsId:newsId,
             title:title || news.title,
             content:content || news.content,
-            categoryId:category || news.category,
+            category:category || news.category,
             language:language || news.language,
             tags:tags || news.tags,
             location:location || news.location,
             editedBy: req.user.id,
             isFake:isFake || news.isFake,
+            imageURLs:uploadedFileUrls
         },
     })
 
@@ -164,4 +219,122 @@ export default class NewsController {
 
    return new ItemDeletedResponse('News deleted Successfully')
   })
+
+  public getAllNews = asyncHandler(async (req: Request, res: Response) => {
+    if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
+        throw new ForbiddenError("You are not allowed to get all news");
+    }
+
+    const newsList = await News.find({}).populate('category').sort({createdAt:-1});
+
+    if(!newsList)
+        throw new NotFoundError("News not found");
+
+    return new ItemFetchedResponse('All news fetched successfully',newsList)
+  }
+  )
+  public getNewsById = asyncHandler(async (req: Request, res: Response) => {
+    if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
+        throw new ForbiddenError("You are not allowed to get news by id");
+    }
+
+    const {newsId} = req.params as unknown as IGetNewsID
+
+    const news = await News.findById(newsId).populate('category');
+
+    if(!news)
+        throw new NotFoundError("News not found");
+
+    return new ItemFetchedResponse('News fetched successfully',news)
+  }
+  )
+
+  public getNewsByReporter = asyncHandler(async (req: Request, res: Response) => {
+    // if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
+    //     throw new ForbiddenError("You are not allowed to get news by reporter");
+    // }
+
+    const {reporterId} = req.params as unknown as IGetNewsReporter
+
+    const newsList = await News.find({reporterBy:reporterId}).populate('category').sort({createdAt:-1});
+
+    if(!newsList)
+        throw new NotFoundError("News not found");
+
+    return new ItemFetchedResponse('News fetched successfully',newsList)
+  }
+  )
+
+  public getNewsByCategory = asyncHandler(async (req: Request, res: Response) => {
+    if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
+        throw new ForbiddenError("You are not allowed to get news by category");
+    }
+
+    const {categoryId} = req.params as unknown as {categoryId:string}
+
+    const newsList = await News.aggregate([
+      
+        {
+          $match: {
+            _id: new Schema.Types.ObjectId(categoryId)
+          }
+        },
+        {
+          $graphLookup: {
+            from: 'categories',
+            startWith: '$_id',
+            connectFromField: '_id',
+            connectToField: 'parent',
+            as: 'children'
+          }
+        },
+        {
+          $project: {
+            selfId: '$_id',
+            childrenIds: {
+              $map: {
+                input: '$children',
+                as: 'child',
+                in: '$$child._id'
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            allCategoryIds: {
+              $setUnion: [['$selfId'], '$childrenIds']
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: 'news',
+            let: { categoryIds: '$allCategoryIds' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $in: ['$category', '$$categoryIds']
+                  }
+                }
+              }
+            ],
+            as: 'news'
+          }
+        },
+        {
+          $project: {
+            news: 1,
+            _id: 0
+          }
+        }
+      ])   
+
+    if(!newsList)
+        throw new NotFoundError("News not found");
+
+    return new ItemFetchedResponse('News fetched successfully',newsList)
+  }
+  )
 }

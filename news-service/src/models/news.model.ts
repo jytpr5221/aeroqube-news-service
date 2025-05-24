@@ -54,7 +54,7 @@ export interface INews extends Document {
   language: Languages;
   editedBy?: Types.ObjectId;
   publishedBy?: Types.ObjectId;
-  imageURL?: string[];
+  imageURLs?: string[];
   tags?: string[];
   location?: string;
   translatedServices?: ITranslatedService[];
@@ -64,7 +64,6 @@ export const NewsSchema = new Schema<INews>({
   title: {
     type: String,
     required: true,
-    unique: true,
   },
   content: {
     type: String,
@@ -131,7 +130,7 @@ export const NewsSchema = new Schema<INews>({
     type: Schema.Types.ObjectId,
     ref: "User",
   },
-  imageURL: [
+  imageURLs: [
     {
       type: String,
     },

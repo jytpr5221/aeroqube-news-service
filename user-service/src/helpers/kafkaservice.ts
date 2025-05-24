@@ -121,14 +121,7 @@ export async function configureKafka() {
             }
             reporter.role = UserType.PENDINGREPORTER; 
             await reporter.save();
-            console.log("User role updated", reporter);
-            // Invalidate relevant caches
-            await Promise.all([
-              redisService.del(`application:${application._id}`),
-              redisService.del(`user:${value.reporterId}:applications`),
-              redisService.del('applications:pending'),
-              redisService.del('applications:all')
-            ]);
+            console.log("User role updated", reporter)
           } catch (error) {
             console.error("Error creating application", error);
             throw new ServerError("Error creating application");
@@ -154,13 +147,7 @@ export async function configureKafka() {
             }
             console.log("Application updated", application);
             
-            // Invalidate relevant caches
-            await Promise.all([
-              redisService.del(`application:${application._id}`),
-              redisService.del(`user:${value.reporterId}:applications`),
-              redisService.del('applications:pending'),
-              redisService.del('applications:all')
-            ]);
+            
           } catch (error) {
             console.error("Error updating application", error);
             throw new ServerError("Error updating application");
@@ -198,13 +185,7 @@ export async function configureKafka() {
             
             
             // Invalidate relevant caches
-            await Promise.all([
-              redisService.del(`application:${application._id}`),
-              redisService.del(`user:${value.reporterId}:applications`),
-              redisService.del('applications:pending'),
-              redisService.del('applications:all'),
-              redisService.del(`applications:status:${value.status}`)
-            ]);
+            
 
             // Send verification email
             if (user.email) {
@@ -238,14 +219,7 @@ export async function configureKafka() {
             }
             console.log("Application rejected", application);
             
-            // Invalidate relevant caches
-            await Promise.all([
-              redisService.del(`application:${application._id}`),
-              redisService.del(`user:${value.reporterId}:applications`),
-              redisService.del('applications:pending'),
-              redisService.del('applications:all'),
-              redisService.del(`applications:status:${value.status}`)
-            ]);
+            
 
             // Send rejection email
             if (value.email) {
@@ -271,14 +245,7 @@ export async function configureKafka() {
             }
             console.log("Application deleted", application);
             
-            // Invalidate relevant caches
-            await Promise.all([
-              redisService.del(`application:${application._id}`),
-              redisService.del(`user:${value.reporterId}:applications`),
-              redisService.del('applications:pending'),
-              redisService.del('applications:all'),
-              redisService.del(`applications:status:${application.status}`)
-            ]);
+            
           } catch (error) {
             console.error("Error deleting application", error);
             throw new ServerError("Error deleting application");

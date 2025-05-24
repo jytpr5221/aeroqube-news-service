@@ -20,3 +20,12 @@ export interface IUpdateNews extends IUploadNews{
 export interface IDeleteNews{
     newsId:Schema.Types.ObjectId
 }
+
+
+export interface IGetNewsID{
+    newsId:Schema.Types.ObjectId
+}
+
+export interface IGetNewsReporter{
+    reporterId:Schema.Types.ObjectId
+}

@@ -2,11 +2,11 @@
   "compilerOptions": {
     "target": "ES6",
     "module": "commonjs",
-    "removeComments": false,
+    "esModuleInterop": true,          
+    "allowSyntheticDefaultImports": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
-    "allowSyntheticDefaultImports": true,
     "pretty": true,
     "resolveJsonModule": true,
     "sourceMap": true,
@@ -22,13 +22,12 @@
       "@middlewares/*": ["src/middlewares/*"],
       "@models/*": ["src/models/*"],
       "@routes/*": ["src/routes/*"],
+      "@configs/*": ["src/configs/*"],
       "@schemes/*": ["src/schemes/*"],
       "@utils/*": ["src/utils/*"],
-      "@root/*": ["src/*"],
-      "@helpers/*": ["src/helpers/*"]
+      "@root/*": ["src/*"]
     }
   },
   "include": ["src/**/*"],
-  "filesGlob": ["./src/**/*.ts", "./src/**/*.d.ts"],
-  "exclude": ["node_modules", "src/lib/customTypings", "**/*.test.ts"],
+  "exclude": ["node_modules", "src/lib/customTypings", "**/*.test.ts"]
 }

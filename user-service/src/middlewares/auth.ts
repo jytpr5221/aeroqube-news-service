@@ -14,6 +14,7 @@ export const authenticateToken = async (
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
+    console.log(token)
     if (!token) {
       return next(new BadRequestError('Token is missing'));
     }

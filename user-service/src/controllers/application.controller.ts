@@ -26,11 +26,10 @@ import { asyncHandler } from "@utils/AsyncHandler";
 import { Request, Response } from "express";
 import { publish } from "@root/helpers/kafkaservice";
 import { ApplicationServiceEvents } from "@constants/kafkatopics";
-import { redisService } from "@configs/redis.config";
 import { uploadAttachmentToS3 } from "@utils/s3uploader";
 import path from "path";
 import fs from "fs/promises";
-import { Schema } from "mongoose";
+
 
 export default class ApplicationController {
   public createApplication = asyncHandler(
@@ -231,27 +230,11 @@ export default class ApplicationController {
 
   public getApplication = asyncHandler(async (req: Request, res: Response) => {
     const applicationId = req.params.applicationId;
-    const cacheKey = `application:${applicationId}`;
-
-    // Try to get from cache first
-    const cachedApplication = await redisService.get(cacheKey);
-    if (cachedApplication) {
-      return new ItemFetchedResponse(
-        "Application fetched successfully from cache",
-        JSON.parse(cachedApplication)
-      );
-    }
-
     const application = await Application.findById(applicationId);
-
-    console.log('APPLICATION',application)
 
     if (!application) {
       throw new NotFoundError("No such Application exists");
     }
-
-    // Cache the result for 1 hour
-    // await redisService.set(cacheKey, JSON.stringify(application), 3600);
 
     return new ItemFetchedResponse(
       "Application fetched successfully",
@@ -262,17 +245,6 @@ export default class ApplicationController {
   public getMyApplications = asyncHandler(
     async (req: Request, res: Response) => {
       const userId = req.user._id;
-      const cacheKey = `user:${userId}:applications`;
-
-      // Try to get from cache first
-      const cachedApplications = await redisService.get(cacheKey);
-      if (cachedApplications) {
-        return new ItemFetchedResponse(
-          "Applications fetched successfully from cache",
-          JSON.parse(cachedApplications)
-        );
-      }
-
       const applications = await Application.find({
         reporterId: userId,
       }).populate("reporterId");
@@ -280,9 +252,6 @@ export default class ApplicationController {
       if (!applications) {
         throw new NotFoundError("No Applications exists");
       }
-
-      // Cache the result for 1 hour
-      await redisService.set(cacheKey, JSON.stringify(applications), 3600);
 
       return new ItemFetchedResponse(
         "Applications fetched successfully",
@@ -302,17 +271,6 @@ export default class ApplicationController {
         );
       }
 
-      const cacheKey = "applications:pending";
-
-      // Try to get from cache first
-      const cachedApplications = await redisService.get(cacheKey);
-      if (cachedApplications) {
-        return new ItemFetchedResponse(
-          "Applications fetched successfully from cache",
-          JSON.parse(cachedApplications)
-        );
-      }
-
       const applications = await Application.find({
         status: ApplicationStatus.PENDING,
       }).populate("reporterId");
@@ -320,9 +278,6 @@ export default class ApplicationController {
       if (!applications) {
         throw new NotFoundError("No Pending Applications exists");
       }
-
-      // Cache the result for 1 hour
-      await redisService.set(cacheKey, JSON.stringify(applications), 3600);
 
       return new ItemFetchedResponse(
         "Applications fetched successfully",
@@ -341,17 +296,6 @@ export default class ApplicationController {
       ) {
         throw new ForbiddenError(
           "You are not authorized to view all applications"
-        );
-      }
-
-      const cacheKey = `applications:user:${username}`;
-
-      // Try to get from cache first
-      const cachedApplications = await redisService.get(cacheKey);
-      if (cachedApplications) {
-        return new ItemFetchedResponse(
-          "Applications fetched successfully from cache",
-          JSON.parse(cachedApplications)
         );
       }
 
@@ -383,9 +327,6 @@ export default class ApplicationController {
         throw new NotFoundError("No Applications exists");
       }
 
-      // Cache the result for 1 hour
-      await redisService.set(cacheKey, JSON.stringify(applications), 3600);
-
       return new ItemFetchedResponse(
         "Applications fetched successfully",
         applications
@@ -406,17 +347,6 @@ export default class ApplicationController {
         );
       }
 
-      const cacheKey = `applications:status:${status}`;
-
-      // Try to get from cache first
-      const cachedApplications = await redisService.get(cacheKey);
-      if (cachedApplications) {
-        return new ItemFetchedResponse(
-          "Applications fetched successfully from cache",
-          JSON.parse(cachedApplications)
-        );
-      }
-
       const applications = await Application.find({ status }).populate(
         "reporterId"
       );
@@ -424,9 +354,6 @@ export default class ApplicationController {
       if (!applications) {
         throw new NotFoundError("No Applications exists");
       }
-
-      // Cache the result for 1 hour
-      await redisService.set(cacheKey, JSON.stringify(applications), 3600);
 
       return new ItemFetchedResponse(
         "Applications fetched successfully",
@@ -446,25 +373,11 @@ export default class ApplicationController {
         );
       }
 
-      const cacheKey = "applications:all";
-
-      // Try to get from cache first
-      const cachedApplications = await redisService.get(cacheKey);
-      if (cachedApplications) {
-        return new ItemFetchedResponse(
-          "Applications fetched successfully from cache",
-          JSON.parse(cachedApplications)
-        );
-      }
-
       const applications = await Application.find({}).populate("reporterId");
 
       if (!applications) {
         throw new NotFoundError("No Applications exists");
       }
-
-      // Cache the result for 1 hour
-      await redisService.set(cacheKey, JSON.stringify(applications), 3600);
 
       return new ItemFetchedResponse(
         "Applications fetched successfully",

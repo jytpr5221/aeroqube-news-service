@@ -171,7 +171,7 @@ export default class UserController {
       throw new NotAuthorizedError('User not found')
     }
 
-    // console.log(user)
+    console.log(user)
 
     const existingUser = await User.findById(user.id);
 
@@ -180,6 +180,8 @@ export default class UserController {
     }
 
     existingUser.password = undefined;
+
+    console.log(existingUser) 
 
     return new ItemFetchedResponse('User Fetched Successfully', existingUser);
   })

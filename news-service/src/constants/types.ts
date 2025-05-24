@@ -14,3 +14,10 @@ export enum NewsServiceEvents {
     VERIFY_NEWS = 'verify-news',
     DELETE_NEWS = 'delete-news'
 }
+
+
+export enum CategoryEvents {
+  CREATE_CATEGORY = 'create-category',
+  UPDATE_CATEGORY = 'update-category',
+  DELETE_CATEGORY = 'delete-category'
+}

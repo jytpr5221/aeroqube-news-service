@@ -1,7 +1,5 @@
-import { User } from "@models/user.model";
-import { BadRequestError, ServerError } from "@utils/ApiError";
+import { ServerError } from "@utils/ApiError";
 import nodemailer from "nodemailer";
-import jwt from "jsonwebtoken";
 
 const transporter =  nodemailer.createTransport({
     host: "sandbox.smtp.mailtrap.io",
@@ -29,7 +27,7 @@ export const sendEmail = async(email:string,body:string)=>{
     const mailResponse = await transporter.sendMail(mailOptions);
 
     if(!mailResponse)
-        throw new BadRequestError('Email not sent');
+        throw new ServerError('Email not sent');
 
     return mailResponse 
     } catch (error) {
