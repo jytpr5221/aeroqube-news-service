@@ -29,6 +29,11 @@ export async function configureKafka() {
         numPartitions: 1,
         replicationFactor: 1,
       },
+      {
+        topic:'ai-service',
+        numPartitions: 1,
+        replicationFactor: 1,
+      }
     ],
   });
 
@@ -82,7 +87,7 @@ export async function configureKafka() {
             const news = await News.findByIdAndUpdate(
               value.newsId,
               {
-                title: value.title,
+                title:value.title,
                 content: value.content,
                 category: value.category,
                 location: value.location,
@@ -92,6 +97,7 @@ export async function configureKafka() {
                 isFake: value.isFake,
                 reportedBy: value.reportedBy,
                 imageURLs: value.imageURLs,
+                status:value.status
               },
               { new: true }
             );
@@ -116,6 +122,24 @@ export async function configureKafka() {
             console.log("News Verify message processed", news);
           } catch (error) {
             console.error("Error processing news verify message", error);
+          }
+          break;
+
+          case NewsServiceEvents.PUBLISH_NEWS:
+          console.log("News Publish message received");
+          try {
+            const news = await News.findByIdAndUpdate(
+              value.newsId,
+              {
+                status: NewsStatus.PUBLISHED,
+                publishedAt: new Date(),
+                publishedBy: value.publishedBy,
+              },
+              { new: true }
+            );
+            console.log("News Publish message processed", news);
+          } catch (error) {
+            console.error("Error processing news publish message", error);
           }
           break;
 

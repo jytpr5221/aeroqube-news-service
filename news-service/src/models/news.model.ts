@@ -5,6 +5,7 @@ export enum NewsStatus {
   PUBLISHED = "published",
   ACCEPTED = "accepted",
   REJECTED = "rejected",
+  VERIFIED = 'verified'
 }
 
 export enum Languages {

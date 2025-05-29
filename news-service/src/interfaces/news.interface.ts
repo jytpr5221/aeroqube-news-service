@@ -1,4 +1,4 @@
-import { Languages } from "@models/news.model";
+import { Languages, NewsStatus } from "@models/news.model";
 import { Schema } from "mongoose";
 
 export interface IUploadNews{
@@ -15,6 +15,7 @@ export interface IUploadNews{
 
 export interface IUpdateNews extends IUploadNews{
     isFake:boolean;
+    status:NewsStatus.REJECTED | NewsStatus.VERIFIED;
 }
 
 export interface IDeleteNews{

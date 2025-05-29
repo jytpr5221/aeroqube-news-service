@@ -181,13 +181,7 @@ export async function configureKafka() {
               user.isActive=true
               await user.save();
               console.log("User role updated", user);
-            
-            
-            
-            // Invalidate relevant caches
-            
 
-            // Send verification email
             if (user.email) {
               const emailBody = `
                 <h1>Application Verified!!🎉🎉</h1>

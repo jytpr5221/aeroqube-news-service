@@ -1,6 +1,6 @@
 import { NewsServiceEvents, UserType } from "@constants/types";
 import { IDeleteNews, IGetNewsID, IGetNewsReporter, IUpdateNews, IUploadNews } from "@interfaces/news.interface";
-import { INews, News } from "@models/news.model";
+import { INews, News, NewsStatus } from "@models/news.model";
 import { BadRequestError, ForbiddenError, NotFoundError, ServerError } from "@utils/ApiError";
 import { publish } from "@root/helpers/kafkaservice";
 import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpdatedResponse } from "@utils/ApiResponse";
@@ -10,7 +10,6 @@ import { uploadAttachmentToS3 } from "@utils/s3uploader";
 import fs from "fs/promises";
 import path from "path";
 import { Schema } from "mongoose";
-
 
 export default class NewsController {
   public uploadNews = asyncHandler(async (req: Request, res: Response) => {
@@ -75,7 +74,7 @@ export default class NewsController {
         throw new ForbiddenError("You are not allowed to edit news");
     }
 
-    const { title, content, category, language, tags, location, isFake } = req.body as IUpdateNews;
+    const { title, content, category, language, tags, location, isFake, status } = req.body as IUpdateNews;
 
     const newsId = req.params.id;
 
@@ -120,7 +119,8 @@ export default class NewsController {
             location:location || news.location,
             editedBy: req.user.id,
             isFake:isFake || news.isFake,
-            imageURLs:uploadedFileUrls
+            imageURLs:uploadedFileUrls,
+            status:status
         },
     })
 
@@ -160,6 +160,40 @@ export default class NewsController {
     return new ItemUpdatedResponse('News verified successfully',null)
   })
 
+  public generateAIService = asyncHandler(async (req: Request, res: Response) => {
+
+    if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
+        throw new ForbiddenError("You are not allowed to generate AI service for news");
+    }
+
+    const { newsId } = req.params as unknown as {newsId:string};
+
+    const news = await News.findById(newsId);
+
+    if(!news)
+        throw new NotFoundError("News not found");
+
+    if(news.status !== NewsStatus.ACCEPTED)
+        throw new BadRequestError("Only accepted news can be serviced by AI");
+
+    const response = await publish({
+        topic:'ai-service',
+        event: NewsServiceEvents.GENERATE_SERVICE,
+        message:{
+            content: news.content,
+            title: news.title,
+            tags: news.tags || [],
+            category: news.category,
+            newsId: newsId,
+        },
+    })
+
+    if(!response)
+        throw new ServerError("Error while publishing news to kafka");
+
+    return new ItemUpdatedResponse('AI service generation request sent successfully',null)
+  })
+
   public getAIServicedNews = asyncHandler(async (req: Request, res: Response) => {
     if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
         throw new ForbiddenError("You are not allowed to get AI serviced news");
@@ -174,6 +208,37 @@ export default class NewsController {
         throw new NotFoundError("News not found");
 
     return new ItemFetchedResponse('AI serviced news fetched successfully',newsList)    
+  })
+
+  public publishNews = asyncHandler(async (req: Request, res: Response) => {
+
+    if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
+        throw new ForbiddenError("You are not allowed to publish news");
+    }
+
+    const { newsId } = req.params as unknown as {newsId:string};
+
+    const news = await News.findById(newsId);
+
+    if(!news)
+        throw new NotFoundError("News not found");
+
+    if(news.status !== NewsStatus.ACCEPTED)
+        throw new BadRequestError("Only accepted news can be published");
+
+    const response = await publish({
+        topic:'news-service',
+        event: NewsStatus.PUBLISHED,
+        message:{
+            newsId:newsId,
+            publishedBy: req.user.id,
+        },
+    })
+
+    if(!response)
+        throw new ServerError("Error while publishing news to kafka");
+
+    return new ItemUpdatedResponse('News published successfully',null)
   })
 
   public getNewsByStatus = asyncHandler(async (req: Request, res: Response) => {
@@ -233,6 +298,7 @@ export default class NewsController {
     return new ItemFetchedResponse('All news fetched successfully',newsList)
   }
   )
+
   public getNewsById = asyncHandler(async (req: Request, res: Response) => {
     if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
         throw new ForbiddenError("You are not allowed to get news by id");

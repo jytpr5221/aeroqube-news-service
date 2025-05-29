@@ -12,7 +12,9 @@ export enum NewsServiceEvents {
     UPLOAD_NEWS = 'upload-news',
     UPDATE_NEWS = 'update-news',
     VERIFY_NEWS = 'verify-news',
-    DELETE_NEWS = 'delete-news'
+    DELETE_NEWS = 'delete-news',
+    PUBLISH_NEWS = 'publish-news',
+    GENERATE_SERVICE = 'generate-service',
 }
 
 

@@ -63,3 +63,48 @@ export const DeleteNewsSchema = z.object({
   })
   .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid news ID format" })
 });
+
+// Schema for getting news by ID
+export const GetNewsByIdSchema = z.object({
+  newsId: z.string({
+    required_error: "News ID is required",
+    invalid_type_error: "News ID must be a string"
+  })
+  .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid news ID format" })
+});
+
+// Schema for getting news by reporter
+export const GetNewsByReporterSchema = z.object({
+  reporterId: z.string({
+    required_error: "Reporter ID is required",
+    invalid_type_error: "Reporter ID must be a string"
+  })
+  .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid reporter ID format" })
+});
+
+// Schema for getting news by category
+export const GetNewsByCategorySchema = z.object({
+  categoryId: z.string({
+    required_error: "Category ID is required",
+    invalid_type_error: "Category ID must be a string"
+  })
+  .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid category ID format" })
+});
+
+// Schema for generating AI service
+export const GenerateAIServiceSchema = z.object({
+  newsId: z.string({
+    required_error: "News ID is required",
+    invalid_type_error: "News ID must be a string"
+  })
+  .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid news ID format" })
+});
+
+// Schema for publishing news
+export const PublishNewsSchema = z.object({
+  newsId: z.string({
+    required_error: "News ID is required",
+    invalid_type_error: "News ID must be a string"
+  })
+  .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid news ID format" })
+});

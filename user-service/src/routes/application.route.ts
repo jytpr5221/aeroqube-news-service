@@ -17,7 +17,7 @@ class ApplicationRouter {
     private readonly router: Router;
 
     constructor() {
-        this.router = Router();
+        this.router = Router()
     }
 
     public routes(): Router {
@@ -47,6 +47,14 @@ class ApplicationRouter {
             validateRequest(UpdateApplicationSchema, ValidationSource.BODY),
             applicationController.updateApplication
         );
+
+        // Get all applications (admin only)
+        this.router.get(
+            '/all',
+            authenticateToken,
+            applicationController.getAllApplications
+        );
+
 
         // Get single application
         this.router.get(
@@ -86,13 +94,7 @@ class ApplicationRouter {
             applicationController.getApplicationByQueryStatus
         );
 
-        // Get all applications (admin only)
-        this.router.get(
-            '/all',
-            authenticateToken,
-            applicationController.getAllApplications
-        );
-
+        
         // Verify application (admin only)
         this.router.put(
             '/verify/:applicationId',

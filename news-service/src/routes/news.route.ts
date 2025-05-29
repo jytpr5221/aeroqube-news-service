@@ -1,5 +1,5 @@
 import { ValidationSource, validateRequest } from '@root/helpers/zodvalidators';
-import { DeleteNewsSchema, EditNewsSchema, GetNewsByStatusSchema, UploadNewsSchema, VerifyNewsSchema } from '@root/schemas/news.schema';
+import { DeleteNewsSchema, EditNewsSchema, GenerateAIServiceSchema, GetNewsByCategorySchema, GetNewsByIdSchema, GetNewsByReporterSchema, GetNewsByStatusSchema, PublishNewsSchema, UploadNewsSchema, VerifyNewsSchema } from '@root/schemas/news.schema';
 import { Request, Response, Router } from 'express';
 import NewsController from '@controllers/news.controller';
 import { authMiddleware } from '@middlewares/auth';
@@ -68,6 +68,50 @@ class NewsRouter {
             authMiddleware,
             validateRequest(DeleteNewsSchema, ValidationSource.PARAMS),
             newsController.deleteNews
+        );
+
+        // Get all news route - requires authentication
+        this.router.get(
+            '/all',
+            authMiddleware,
+            newsController.getAllNews
+        );
+
+        // Get news by ID route - requires authentication
+        this.router.get(
+            '/:newsId',
+            authMiddleware,
+            newsController.getNewsById
+        );
+
+        // Get news by reporter route - requires authentication
+        this.router.get(
+            '/reporter/:reporterId',
+            authMiddleware,
+            newsController.getNewsByReporter
+        );
+
+        // Get news by category route - requires authentication
+        this.router.get(
+            '/category/:categoryId',
+            authMiddleware,
+            newsController.getNewsByCategory
+        );
+
+        // Generate AI service route - requires authentication and validation
+        this.router.post(
+            '/generate-ai-service/:newsId',
+            authMiddleware,
+            validateRequest(GenerateAIServiceSchema, ValidationSource.PARAMS),
+            newsController.generateAIService
+        );
+
+        // Publish news route - requires authentication and validation
+        this.router.post(
+            '/publish/:newsId',
+            authMiddleware,
+            validateRequest(PublishNewsSchema, ValidationSource.PARAMS),
+            newsController.publishNews
         );
 
         return this.router;

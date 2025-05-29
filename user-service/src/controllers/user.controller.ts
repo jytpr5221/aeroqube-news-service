@@ -25,7 +25,7 @@ export default class UserController {
     const hashedPassword = await bcrypt.hash(password, 10);
     if (!hashedPassword) {
         throw new ServerError('Something went wrong while hashing password')
-    }
+    };
 
     const user = await User.create({
       name: name,
@@ -36,15 +36,16 @@ export default class UserController {
       isVerified: false,
       isActive: false,
       isLoggedIn: false,
-      role: UserType.SUPERADMIN,
+      role: UserType.USER,
     });
 
     if (!user) {
       throw new ServerError('Something went wrong while creating user')
     }
 
+    const userWithoutPassword = await User.findById(user._id).select("-password");
     
-    const token = jwt.sign({ email:email },process.env.JWT_SECRET, {expiresIn: '15minutes'});
+    const token = jwt.sign({ email:email },process.env.JWT_SECRET, {expiresIn: '1d'});
     const url = `${process.env.BASE_URL}/api/v0/user/verify/?verifytoken=${token}`
     const emailBody = 
        `
@@ -67,7 +68,7 @@ export default class UserController {
       }
     })
 
-    return new ItemCreatedResponse('User Created Successfully', user);
+    return new ItemCreatedResponse('User Created Successfully', userWithoutPassword);
   });
 
 
@@ -92,7 +93,8 @@ export default class UserController {
 
     await user.save();
 
-    return new ItemCreatedResponse('User Verified Successfully', user);
+    const userWithoutPassword = await User.findById(user._id).select("-password");
+    return new ItemCreatedResponse('User Verified Successfully', userWithoutPassword);
   })
 
 
@@ -155,12 +157,11 @@ export default class UserController {
 
     await user.save();
 
-    user.password=undefined
-
+    const userWithoutPassword = await User.findById(user._id).select("-password");
     return new ItemCreatedResponse('User Logged In Successfully', {
-        user:user,
-        token:token,
-    })
+        user: userWithoutPassword,
+        token: token,
+    });
 
 })
 
@@ -265,7 +266,7 @@ export default class UserController {
   public getUserByQuery = asyncHandler(async (req: Request, res: Response) => {
     const {name,email} = req.query
     
-    const user = await User.findOne({
+    const user = await User.find({
       $or: [{name:name}, {email:email}]
     }).select("-password");
 
@@ -309,10 +310,10 @@ export default class UserController {
         return new ServerError('Something went wrong while updating user')
     }
 
+    const userWithoutPassword = await User.findById(updatedUser._id).select("-password");
     updatedUser.password=undefined
 
-
-    return new ItemUpdatedResponse('User Updated Successfully', updatedUser);
+    return new ItemUpdatedResponse('User Updated Successfully', userWithoutPassword);
 
 
   })
@@ -399,7 +400,8 @@ export default class UserController {
       }
     })
 
-    return new ItemCreatedResponse('SuperAdmin Created Successfully', user);
+    const userWithoutPassword = await User.findById(user._id).select("-password");
+    return new ItemCreatedResponse('SuperAdmin Created Successfully', userWithoutPassword);
   });
 
   public addEditor = asyncHandler(async (req: Request, res: Response) => {
@@ -457,7 +459,8 @@ export default class UserController {
       }
     })
 
-    return new ItemCreatedResponse('Editor Created Successfully', user);
+    const userWithoutPassword = await User.findById(user._id).select("-password");
+    return new ItemCreatedResponse('Editor Created Successfully', userWithoutPassword);
   })
 
   public addAdmin = asyncHandler(async (req: Request, res: Response) => {
@@ -514,6 +517,7 @@ export default class UserController {
       }
     })
 
+    user.password=null
     return new ItemCreatedResponse('Admin Created Successfully', user);
   })
   
