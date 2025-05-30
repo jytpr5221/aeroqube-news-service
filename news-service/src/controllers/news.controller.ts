@@ -74,7 +74,9 @@ export default class NewsController {
         throw new ForbiddenError("You are not allowed to edit news");
     }
 
-    const { title, content, category, language, tags, location, isFake, status } = req.body as IUpdateNews;
+    const { title, content, category, language, tags, location, isFake } = req.body as IUpdateNews;
+
+    console.log(isFake,typeof isFake)
 
     const newsId = req.params.id;
 
@@ -117,10 +119,10 @@ export default class NewsController {
             language:language || news.language,
             tags:tags || news.tags,
             location:location || news.location,
-            editedBy: req.user.id,
-            isFake:isFake || news.isFake,
+            editedBy: req.user._id,
+            isFake:isFake !== undefined ? isFake : news.isFake,
             imageURLs:uploadedFileUrls,
-            status:status
+            status:NewsStatus.VERIFIED
         },
     })
 
@@ -150,7 +152,7 @@ export default class NewsController {
         message:{
             newsId:newsId,
             status:status || news.status,
-            verifiedBy: req.user.id,
+            verifiedBy: req.user._id,
         },
     })
 
@@ -231,7 +233,7 @@ export default class NewsController {
         event: NewsStatus.PUBLISHED,
         message:{
             newsId:newsId,
-            publishedBy: req.user.id,
+            publishedBy: req.user._id,
         },
     })
 
@@ -242,7 +244,7 @@ export default class NewsController {
   })
 
   public getNewsByStatus = asyncHandler(async (req: Request, res: Response) => {
-    if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
+    if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN && req.user.role !== UserType.EDITOR){
         throw new ForbiddenError("You are not allowed to get news by status");
     }
 

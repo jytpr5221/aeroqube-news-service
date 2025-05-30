@@ -28,18 +28,25 @@ export const UploadNewsSchema = z.object({
       invalid_type_error: "Invalid language"
     }),
   
-    // tags: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
     location: z.string().optional()
   });
 
 
 
-// Schema for editing news
 export const EditNewsSchema = UploadNewsSchema.extend({
-  isFake: z.boolean({
-    required_error: "isFake status is required",
-    invalid_type_error: "isFake must be a boolean"
-  })
+  isFake: z.preprocess(
+    val=>{
+      if (typeof val === 'string') {
+        return val.toLowerCase() === 'true';
+      }
+      return val;
+    },
+    z.boolean({
+      required_error: "isFake status is required",
+      invalid_type_error: "isFake must be a boolean"
+    })
+  )
 });
 
 // Schema for verifying news

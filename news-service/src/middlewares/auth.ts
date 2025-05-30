@@ -17,7 +17,7 @@ export const authMiddleware = async (req: any, res: any, next: any) => {
             },
         })
 
-        console.log(response.data.data)
+        // console.log(response.data.data)
 
         if(!response){
             console.error('Unable to authenticate user')

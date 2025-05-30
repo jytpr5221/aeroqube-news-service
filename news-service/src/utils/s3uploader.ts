@@ -10,7 +10,7 @@ const s3config = {
 
 }
 
-console.log(s3config)
+// console.log(s3config)
 
 
 const s3 = new AWS.S3({
