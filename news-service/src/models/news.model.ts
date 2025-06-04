@@ -40,7 +40,7 @@ export interface ITranslatedService {
 export interface INews extends Document {
   title: string;
   content: string;
-  summerizedContent?: string;
+  summarizedContent?: string;
   category: Types.ObjectId;
   status: NewsStatus;
   reportedBy?: Types.ObjectId;
@@ -70,7 +70,7 @@ export const NewsSchema = new Schema<INews>({
     type: String,
     required: true,
   },
-  summerizedContent: {
+  summarizedContent: {
     type: String,
   },
   category: {
@@ -103,7 +103,7 @@ export const NewsSchema = new Schema<INews>({
   updatedAt: {
     type: Date,
     default: Date.now,
-    required: true,
+    // required: true,
   },
   publishedAt: {
     type: Date,

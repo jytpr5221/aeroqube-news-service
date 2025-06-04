@@ -159,6 +159,26 @@ export default class NewsController {
     if(!response)
         throw new ServerError("Error while publishing news to kafka");
 
+
+    if(status === NewsStatus.ACCEPTED ){
+      const sendForService = await publish({
+        topic:'ai-service-generation',
+        event:'generate-translation',
+        message:{
+          newsId:newsId,
+          content:news.content,
+          title:news.title,
+          tags:news.tags
+        }
+      })
+
+      if(!sendForService)
+        throw new ServerError('Error while publishing for service generation')
+
+      console.log('Service generation request sent for news:', newsId);
+    }
+
+
     return new ItemUpdatedResponse('News verified successfully',null)
   })
 

@@ -11,6 +11,7 @@ import { publish } from "@root/helpers/kafkaservice";
 import { DeviceTokenService, UserServiceEvents } from "@constants/kafkatopics";
 import requestIp from 'request-ip';
 import { UserSession } from "@models/usersession.model";
+import { redisClient, redisService } from "@configs/redis.config";
 
 export default class UserController {
 
@@ -71,7 +72,6 @@ export default class UserController {
     return new ItemCreatedResponse('User Created Successfully', userWithoutPassword);
   });
 
-
   public verifyUserEmail = asyncHandler(async (req: Request, res: Response) => {
 
     const { verifytoken } = req.query as { verifytoken: string };
@@ -96,7 +96,6 @@ export default class UserController {
     const userWithoutPassword = await User.findById(user._id).select("-password");
     return new ItemCreatedResponse('User Verified Successfully', userWithoutPassword);
   })
-
 
   public loginuser = asyncHandler(async(req: Request, res: Response) => {
 
@@ -163,7 +162,7 @@ export default class UserController {
         token: token,
     });
 
-})
+  })
 
   public getMyProfile = asyncHandler(async (req: Request, res: Response) => {
     const user = req.user 
@@ -186,7 +185,6 @@ export default class UserController {
 
     return new ItemFetchedResponse('User Fetched Successfully', existingUser);
   })
-
 
   public logoutUser = asyncHandler(async (req: Request, res: Response) => {
 
@@ -230,7 +228,6 @@ export default class UserController {
     
   })
 
-
   public getUserProfile = asyncHandler(async (req: Request, res: Response) => {
 
     const {userId} = req.params 
@@ -246,7 +243,6 @@ export default class UserController {
     return new ItemFetchedResponse('User Fetched Successfully', existingUser);
   })
 
-
   public getAllUsers = asyncHandler(async (req: Request, res: Response) => {
 
     if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
@@ -261,22 +257,32 @@ export default class UserController {
 
     return new ItemFetchedResponse('Users Fetched Successfully', users);
   })
-
   
   public getUserByQuery = asyncHandler(async (req: Request, res: Response) => {
-    const {name,email} = req.query
-    
-    const user = await User.find({
-      $or: [{name:name}, {email:email}]
-    }).select("-password");
 
-    if (!user) {
-      return new NotFoundError('User not found')
+    
+    const { name, email } = req.query;
+
+    const cacheKey = `user:${name || 'null'}:${email || 'null'}`;
+
+    const cachedUser = await redisService.get(cacheKey);
+
+    if (cachedUser) {
+      return new ItemFetchedResponse('User Fetched from Cache', JSON.parse(cachedUser));
     }
 
-    return new ItemFetchedResponse('User Fetched Successfully', user);
-    });
+    const user = await User.find({
+      $or: [{ name }, { email }]
+    }).select("-password");
 
+    if (!user || user.length === 0) {
+      return new NotFoundError('User not found');
+    }
+
+    await redisService.set(cacheKey, JSON.stringify(user), 3600*24);
+
+    return new ItemFetchedResponse('User Fetched Successfully', user);
+  })
 
   public updateUser = asyncHandler(async (req: Request, res: Response) => {
 
@@ -313,11 +319,13 @@ export default class UserController {
     const userWithoutPassword = await User.findById(updatedUser._id).select("-password");
     updatedUser.password=undefined
 
+    const cacheKey = `user:${name || 'null'}:${email || 'null'}`;
+    await redisService.del(cacheKey);
+
     return new ItemUpdatedResponse('User Updated Successfully', userWithoutPassword);
 
 
   })
-
 
   public deleteUser = asyncHandler(async (req: Request, res: Response) => {
 

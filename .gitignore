@@ -10,3 +10,11 @@ user-service/.env
 api-gateway/node_modules/
 
 data/
+
+ai-service/awesome-aspect-455006-b6-56a66c72947e.json
+ai-service/awesome-aspect-455006-b6-66b76a86c2f4.json
+ai-service/awesome-aspect-455006-b6-e45e9e01c19e.json
+ai-service/.env
+
+api-gateway/.env
+api-gateway/node_modules
