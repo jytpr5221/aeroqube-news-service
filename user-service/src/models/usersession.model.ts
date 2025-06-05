@@ -16,7 +16,7 @@ const UserSessionsSchema = new Schema<IUserSession>({
   logoutTime: { type: Date },
   isLoggedIn: { type: Boolean, default: true,required:true },
   platform: { type: String },
-  ip: { type: String, required: true,unique:true },
+  ip: { type: String, required: true },
   createdOn: { type: Date, default: Date.now },
 });
 // we can add FCM token from client if user allows notification

@@ -142,13 +142,17 @@ export default class UserController {
         },
       },
       { upsert: true, new: true }
-    );
+    );//  we can save FCM token here if provided and notifications are enabled
+
+    user.password=null;
   
-    //  Save FCM token here if provided and notifications are enabled
+    
   
-    res.status(200).json({ token });
+    return new ItemCreatedResponse('User Logged In Successfully', {
+      token:token,
+      user:user
+    })
   });
-  
 
   public getMyProfile = asyncHandler(async (req: Request, res: Response) => {
     const user = req.user 
