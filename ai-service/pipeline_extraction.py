@@ -89,30 +89,37 @@ def get_status():
 def start_scheduled_extraction():
     """Start the scheduled extraction process"""
     kafka_service = get_kafka_service()
+    last_run_time = None
 
     while True:
         try:
-            # Run the extraction and processing
-            success = asyncio.run(run_extraction_and_processing())
+            current_time = datetime.now()
             
-            # Publish to Kafka if successful
-            if success:
-                kafka_service.publish_articles_from_file('output/all_processed_articles.json')
-
-            # Calculate time until next run
-            if next_scheduled_run:
-                next_run = datetime.strptime(next_scheduled_run, "%Y-%m-%d %H:%M:%S")
-                now = datetime.now()
-                if next_run > now:
-                    wait_seconds = (next_run - now).total_seconds()
+            # If this is the first run or enough time has passed since last run
+            if last_run_time is None or (current_time - last_run_time).total_seconds() >= 3600:
+                # Run the extraction and processing
+                success = asyncio.run(run_extraction_and_processing())
+                
+                # Publish to Kafka if successful
+                if success:
+                    kafka_service.publish_articles_from_file('output/all_processed_articles.json')
+                
+                # Update last run time
+                last_run_time = current_time
+                
+                # Calculate time until next run
+                next_run = current_time + timedelta(hours=1)
+                wait_seconds = (next_run - datetime.now()).total_seconds()
+                logger.info(f"Next run scheduled for {next_run.strftime('%Y-%m-%d %H:%M:%S')}")
+                logger.info(f"Waiting {wait_seconds:.0f} seconds until next run")
+                time.sleep(wait_seconds)
+            else:
+                # If not enough time has passed, wait for the remaining time
+                time_elapsed = (current_time - last_run_time).total_seconds()
+                wait_seconds = max(0, 3600 - time_elapsed)
+                if wait_seconds > 0:
                     logger.info(f"Waiting {wait_seconds:.0f} seconds until next run")
                     time.sleep(wait_seconds)
-                else:
-                    # If we're already past the scheduled time, wait for the next hour
-                    time.sleep(3600)
-            else:
-                # If no next run is scheduled, wait for an hour
-                time.sleep(3600)
                 
         except Exception as e:
             logger.error(f"Error in scheduled extraction: {str(e)}")

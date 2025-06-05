@@ -2,7 +2,7 @@ import { redisClient, redisService } from "@configs/redis.config";
 import { CategoryEvents, NewsServiceEvents } from "@constants/types";
 import { IProduceMessage } from "@interfaces/kafka.interface";
 import { Category } from "@models/category.model";
-import { News, NewsStatus } from "@models/news.model";
+import { Languages, News, NewsStatus } from "@models/news.model";
 import { KafkaService } from "@root/configs/kafka.config";
 import { Consumer, Producer } from "kafkajs";
 
@@ -335,6 +335,7 @@ export async function configureKafka() {
             // Optionally sanitize:
             entry.translatedContent = sanitizeText(entry.content);
             entry.title = sanitizeText(entry.headline);
+            entry.languageCode = Languages[entry.language_id]
           });
         }
 

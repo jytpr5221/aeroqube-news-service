@@ -10,6 +10,29 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Language code mapping to match the Languages enum
+LANGUAGE_CODE_MAPPING = {
+    'as': 'as',      # Assamese
+    'bn': 'bn',      # Bengali
+    'bho': 'bho',    # Bhojpuri
+    'gu': 'gu',      # Gujarati
+    'hi': 'hi',      # Hindi
+    'kn': 'kn',      # Kannada
+    'kok': 'kok',    # Konkani
+    'mai': 'mai',    # Maithili
+    'ml': 'ml',      # Malayalam
+    'mni-Mtei': 'mni-Mtei',  # Manipuri
+    'mr': 'mr',      # Marathi
+    'or': 'or',      # Odia
+    'pa': 'pa',      # Punjabi
+    'sa': 'sa',      # Sanskrit
+    'sd': 'sd',      # Sindhi
+    'ta': 'ta',      # Tamil
+    'te': 'te',      # Telugu
+    'ur': 'ur',      # Urdu
+    'en': 'en',      # English
+}
+
 # OpenAI reference values
 OPENAI_VOICE_IDS = {
     'kn': 'alloy',  # Kannada
@@ -72,7 +95,7 @@ async def process_article_json(article_data):
             
             # Add to translated services
             translated_services.append({
-                "language_id": lang_code,
+                "language_id": LANGUAGE_CODE_MAPPING.get(lang_code, lang_code),  # Use mapped language code
                 "content": translated_content,
                 "headline": translated_headline,
                 "audioURL": audio_url,
