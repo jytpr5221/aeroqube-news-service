@@ -29,7 +29,7 @@ def initialize_services():
 
 def delayed_start():
     """Start the extraction process after a 30-second delay"""
-    time.sleep(300000)  # Delay before starting extraction
+    time.sleep(300)  # Delay before starting extraction
     extraction_thread = threading.Thread(target=start_scheduled_extraction, daemon=True)
     extraction_thread.start()
 

@@ -10,23 +10,28 @@ export enum ValidationSource {
     PARAMS = 'params',
     HEADERS = 'headers',
 }
-
-export const validateRequest = (schema: ZodSchema, source: ValidationSource= ValidationSource.BODY) => {
-
-    return (req:Request, res:Response, next:NextFunction) => {
-
-        try{
-            const data = schema.parse(req[source]);
-            Object.assign(req.query, data);
-            next();
-        }catch(error){
-
-            if(error instanceof ZodError){
-                const formattedErrors = error.errors.map(err=>err.message).join(', ')
-                return next(new BadRequestError(formattedErrors));
-            }
-
-            next(error)
+export const validateRequest = (
+    schema: ZodSchema,
+    source: ValidationSource = ValidationSource.BODY
+  ) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const data = schema.parse(req[source]);
+  
+        // Only replace `req[source]` if the source is BODY
+        if (source === ValidationSource.BODY) {
+          req.body = data;
         }
-    }
-}
+  
+        next();
+      } catch (error) {
+        if (error instanceof ZodError) {
+          const formattedErrors = error.errors.map(err => err.message).join(', ');
+          return next(new BadRequestError(formattedErrors));
+        }
+  
+        next(error);
+      }
+    };
+  };
+  

@@ -47,13 +47,6 @@ class NewsRouter {
             newsController.verifyNews
         );
 
-        // Get AI serviced news route - requires authentication
-        this.router.get(
-            '/ai-serviced',
-            authMiddleware,
-            newsController.getAIServicedNews
-        );
-
         // Get news by status route - requires authentication and validation
         this.router.get(
             '/by-status',
@@ -96,22 +89,6 @@ class NewsRouter {
             '/category/:categoryId',
             authMiddleware,
             newsController.getNewsByCategory
-        );
-
-        // Generate AI service route - requires authentication and validation
-        this.router.post(
-            '/generate-ai-service/:newsId',
-            authMiddleware,
-            validateRequest(GenerateAIServiceSchema, ValidationSource.PARAMS),
-            newsController.generateAIService
-        );
-
-        // Publish news route - requires authentication and validation
-        this.router.post(
-            '/publish/:newsId',
-            authMiddleware,
-            validateRequest(PublishNewsSchema, ValidationSource.PARAMS),
-            newsController.publishNews
         );
 
         return this.router;
