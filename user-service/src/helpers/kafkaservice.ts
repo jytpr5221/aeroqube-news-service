@@ -1,9 +1,8 @@
-import { DeviceTokenService, ApplicationServiceEvents } from "@constants/kafkatopics";
+import { ApplicationServiceEvents } from "@constants/kafkatopics";
 import { IProduceMessage } from "@interfaces/kafka.interface";
 import { KafkaService } from "@root/configs/kafka.config";
 import { Consumer, Producer } from "kafkajs";
 import { sendEmail } from "./email";
-import { UserSession } from "@models/usersession.model";
 import { Application, ApplicationStatus } from "@models/application.model";
 import { ServerError } from "@utils/ApiError";
 import { redisService } from "@configs/redis.config";
@@ -11,7 +10,6 @@ import { User, UserType } from "@models/user.model";
 
 let kafkaProducer: Producer;
 let emailConsumer: Consumer;
-let deviceTokenConsumer: Consumer;
 let applicationConsumer: Consumer;
 
 export async function configureKafka() {
@@ -47,49 +45,6 @@ export async function configureKafka() {
     },
   });
   console.log("Email Consumer connected");
-
-  // Device token consumer
-  deviceTokenConsumer = kafkaService.createConsumer("device-token-consumer");
-  await deviceTokenConsumer.connect();
-  await deviceTokenConsumer.subscribe({ topic: "device-token-service", fromBeginning: true });
-
-  await deviceTokenConsumer.run({
-    eachMessage: async ({ message }) => {
-      const value = JSON.parse(message.value?.toString() || '{}');
-      const key = message.key?.toString();
-      switch (key) {
-        case DeviceTokenService.CREATE_DEVICE_TOKEN:
-          console.log("Create device token event", value);
-          try {
-            const newDeviceToken = await UserSession.create({
-              userId: value.userId,
-              loginTime: value.loginTime,
-              isLoggedIn: value.isLoggedIn,
-              platform: value.platform,
-              ip: value.ip,
-            });
-            console.log("Device token created", newDeviceToken);
-          } catch (error) {
-            console.error("Error creating device token", error);
-          }
-          break;
-
-        case DeviceTokenService.DELETE_DEVICE_TOKEN:
-          console.log("Delete device token event", value);
-          try {
-            const deletedDeviceToken = await UserSession.findOneAndDelete({
-              userId: value.userId,
-              ip: value.ip
-            });
-            console.log("Device token deleted", deletedDeviceToken);
-          } catch (error) {
-            console.error("Error deleting device token", error);
-          }
-          break;
-      }
-    },
-  });
-  console.log("Device Token Consumer connected");
 
   // Application consumer
   applicationConsumer = kafkaService.createConsumer("application-consumer");

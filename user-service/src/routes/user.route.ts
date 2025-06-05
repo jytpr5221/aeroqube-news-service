@@ -1,9 +1,8 @@
 import { ValidationSource,validateRequest } from '@root/helpers/zodvalidators';
 import { GetUserByIdSchema, GetUserByQuerySchema, LoginUserSchema, RegisterUserSchmea, UpdateUserSchema, verifyUserSchema, GetUserByRoleSchema } from '@root/schemas/user.schema';
-import {Request, Response, Router} from 'express';
+import { Router} from 'express';
 import UserController from '@controllers/user.controller';
 import { authenticateToken } from '@middlewares/auth'
-import { SUCCESS_CODES } from '@constants/statuscodes';
 
 class UserRouter {
 
@@ -13,7 +12,6 @@ class UserRouter {
         this.router=Router()
 
     }
-
     public routes():Router{
 
        const userController = new UserController();
@@ -32,11 +30,11 @@ class UserRouter {
        this.router.post('/add-admin', authenticateToken, validateRequest(RegisterUserSchmea,ValidationSource.BODY), userController.addAdmin);
        this.router.post('/add-editor', authenticateToken, validateRequest(RegisterUserSchmea,ValidationSource.BODY), userController.addEditor);
        this.router.get('/', authenticateToken, validateRequest(GetUserByRoleSchema,ValidationSource.QUERY), userController.getUserByRole);
+       this.router.get('/sessions', authenticateToken, userController.getAllSessions);
+       this.router.delete('/sessions/:sessionId', authenticateToken, userController.deleteUserSession);
 
        return this.router;
     }
-
-
 }
 
 const userRouter = new UserRouter();

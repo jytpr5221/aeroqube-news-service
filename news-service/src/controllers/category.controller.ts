@@ -19,6 +19,7 @@ export default class CategoryController{
             await Promise.all(allKeys.map(key => redisClient.del(key)));
         }
     }
+
     public createNewCategory = asyncHandler(async(req:Request,res:Response)=>{
 
         const {name,parent} = req.body as ICreateCategory
@@ -162,42 +163,6 @@ export default class CategoryController{
         await redisClient.set('parent-categories',JSON.stringify(categories),'EX',60*60*24*7)
         
         return new ItemFetchedResponse('Parent categories fetched successfully',categories)
-    })
-
-    public getCategoryByName = asyncHandler(async(req:Request,res:Response)=>{
-
-        const {categoryName} = req.query as {categoryName:string}
-
-        const cachedResponse = await redisClient.get(`categories:${categoryName}`)
-        if(cachedResponse){
-            return new ItemFetchedResponse('Categories fetched successfully',JSON.parse(cachedResponse))
-        }
-
-        const category = await Category.aggregate([
-
-            {
-                $match: {
-                    name: categoryName
-                }
-            },
-            {
-                $graphLookup:{
-                    from: "categories",
-                    startWith: "$_id",
-                    connectFromField: "_id",
-                    connectToField: "parent",
-                    as: "children",
-                    depthField: "depth"
-                }
-            }
-        ])
-
-        if(!category)
-            throw new NotFoundError("Category not found")
-
-        await redisClient.set(`categories:${categoryName}`,JSON.stringify(category),'EX',60*60*24*7)
-        
-        return new ItemFetchedResponse('Category fetched successfully',category)
     })
 
     public getCategoryById = asyncHandler(async(req:Request,res:Response)=>{

@@ -1,7 +1,4 @@
-export enum DeviceTokenService {
-    DELETE_DEVICE_TOKEN = 'delete-device-token',
-    CREATE_DEVICE_TOKEN= 'create-device-token',
-}
+
 
 export enum UserServiceEvents {
     SEND_VERIFICATION_EMAIL = 'send-verification-email',

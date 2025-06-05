@@ -8,10 +8,11 @@ import { BadRequestError, ForbiddenError, NotAuthorizedError, NotFoundError, Ser
 import { BlacklistToken } from "@models/blacklistedtokens.model";
 import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpdatedResponse } from "@utils/ApiResponse";
 import { publish } from "@root/helpers/kafkaservice";
-import { DeviceTokenService, UserServiceEvents } from "@constants/kafkatopics";
+import { UserServiceEvents } from "@constants/kafkatopics";
 import requestIp from 'request-ip';
 import { UserSession } from "@models/usersession.model";
 import { redisClient, redisService } from "@configs/redis.config";
+import { platform } from "os";
 
 export default class UserController {
 
@@ -97,72 +98,57 @@ export default class UserController {
     return new ItemCreatedResponse('User Verified Successfully', userWithoutPassword);
   })
 
-  public loginuser = asyncHandler(async(req: Request, res: Response) => {
-
-    const {email, password} = req.body as ILoginUser;
-
-    const user = await User.findOne({email:email,isVerified:true})
-
-    if(!user){
-       return new NotFoundError('User not found')
+  public loginuser = asyncHandler(async (req: Request, res: Response) => {
+    const { email, password } = req.body as ILoginUser;
+  
+    const user = await User.findOne({ email, isVerified: true });
+    if (!user) {
+      throw new NotFoundError('User not found');
     }
-
-    const checkLoggedInSessions = await UserSession.aggregate([
-      {
-        $match: {
-          userId: user._id,
-        },
-      },
-      {
-        $group: {
-          _id: "$userId",
-          count: { $sum: 1 },
-        },
-      },
-    ])
-
-    if(checkLoggedInSessions && checkLoggedInSessions.length >= 3){
-      throw new BadRequestError('You have reached the maximum number of login sessions: 3')
-    }// currently bypassing the ip checks...can be included later
-    
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-   
-    if(!isPasswordMatch){
-        throw new BadRequestError('Password is incorrect')
-    }
-
-    const payload={
-        id:user._id,
-        email:user.email,
-        role:user.role,
-    }
-    const token:string = jwt.sign(payload,process.env.JWT_SECRET as string,{expiresIn:'15d'});
-    
-    user.isLoggedIn = true;
-    const clientIp = requestIp.getClientIp(req);
-
-    publish({
-      topic:'device-token-service',
-      event: DeviceTokenService.CREATE_DEVICE_TOKEN,
-      message:{
-        userId:user._id,
-        loginTime:new Date(),
-        isLoggedIn:true,
-        platform:req.headers['user-agent'],
-        ip:clientIp,
-      }
-      // here we can capture the FCM token from the client and save it in the database if notification is allowed
-    })
-
-    await user.save();
-
-    const userWithoutPassword = await User.findById(user._id).select("-password");
-    return new ItemCreatedResponse('User Logged In Successfully', {
-        user: userWithoutPassword,
-        token: token,
+  
+    const activeSessions = await UserSession.countDocuments({
+      userId: user._id,
+      isLoggedIn: true,
     });
-
-  })
+  
+    if (activeSessions >= 3) {
+      throw new BadRequestError('You have reached the maximum number of logged in sessions: 3');
+    }
+  
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+      throw new BadRequestError('Password is incorrect');
+    }
+  
+    const payload = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    };
+  
+    const token = jwt.sign(payload, process.env.JWT_SECRET as string, {
+      expiresIn: '15d',
+    });
+  
+    const clientIp = requestIp.getClientIp(req);
+    const userAgent = req.headers['user-agent'];
+  
+    await UserSession.findOneAndUpdate(
+      { userId: user._id, ip: clientIp, platform: userAgent },
+      {
+        $set: {
+          loginTime: new Date(),
+          isLoggedIn: true,
+        },
+      },
+      { upsert: true, new: true }
+    );
+  
+    //  Save FCM token here if provided and notifications are enabled
+  
+    res.status(200).json({ token });
+  });
+  
 
   public getMyProfile = asyncHandler(async (req: Request, res: Response) => {
     const user = req.user 
@@ -213,15 +199,18 @@ export default class UserController {
     await existingUser.save();
 
     const clientIp = requestIp.getClientIp(req);
-
-    publish({
-      topic:'device-token-service',
-      event: DeviceTokenService.DELETE_DEVICE_TOKEN,
-      message:{
-        userId:user.id,
-        ip:clientIp
-      }
-    })
+    const platform = req.headers['user-agent']
+    
+    await UserSession.findOneAndUpdate(
+      { userId: existingUser._id, ip: clientIp, platform: platform },
+      {
+        $set: {
+          logoutTime: new Date(),
+          isLoggedIn: false,
+        },
+      },
+      { new: true }
+    );
 
     return new ItemDeletedResponse('User Logged Out Successfully');
 
@@ -543,6 +532,37 @@ export default class UserController {
     }
 
     return new ItemFetchedResponse('Users Fetched Successfully', users);
+  })
+
+  public getAllSessions = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user
+  if(!user){
+    throw new NotAuthorizedError('User not found')
+  }
+  
+  const userSessions = await UserSession.find({ userId: user.id }).sort({ createdOn: -1 });
+  if (!userSessions || userSessions.length === 0) {
+    return new NotFoundError('No user sessions found');
+  }
+
+  return new ItemFetchedResponse('User Sessions Fetched Successfully', userSessions);
+  })
+
+  public deleteUserSession = asyncHandler(async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+
+  if (!sessionId) {
+    throw new BadRequestError('Session ID is required');
+  }
+
+  const userSession = await UserSession.findById(sessionId);
+  if (!userSession) {
+    throw new NotFoundError('User session not found');
+  }
+
+  await userSession.deleteOne();
+
+  return new ItemDeletedResponse('User Session Deleted Successfully');
   })
 }
 

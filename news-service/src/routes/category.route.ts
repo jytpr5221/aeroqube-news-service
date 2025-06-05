@@ -38,7 +38,12 @@ class CategoryRouter {
             categoryController.updateCategory
         );
 
-        // Delete category route
+        this.router.get(
+            '/parent-categories',
+            authMiddleware,
+            categoryController.getParentCategories
+        ); 
+             
         
         // Get all categories route
         this.router.get(
