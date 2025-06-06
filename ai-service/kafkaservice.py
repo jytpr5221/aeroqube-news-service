@@ -242,7 +242,7 @@ class NewsKafkaProducer:
                         "language": language,  # Use the mapped language name
                         "isSystemGenerated": True,
                         "isFake": False,
-                        "imageURLs": article.get("image_urls", []),
+                        "imageURLs": article.get("image_url", []) if isinstance(article.get("image_url"), list) else [article.get("image_url")] if article.get("image_url") else [],
                         "originalURL": article.get("url", "")
                     }
                     formatted_batch.append(formatted_article)
@@ -349,7 +349,7 @@ class NewsKafkaProducer:
         language = language_mapping.get(lang_code, "English")
 
         # Get image URLs from either field name
-        image_urls = article.get("imageURLs", []) or article.get("image_urls", [])
+        image_urls = article.get("image_url", [])
         if not isinstance(image_urls, list):
             image_urls = [image_urls] if image_urls else []
 
@@ -609,7 +609,7 @@ class NewsKafkaService:
                         "language": language,  # Use the mapped language name
                         "isSystemGenerated": True,
                         "isFake": False,
-                        "imageURLs": article.get("image_urls", []),
+                        "imageURLs": article.get("image_url", []) if isinstance(article.get("image_url"), list) else [article.get("image_url")] if article.get("image_url") else [],
                         "originalURL": article.get("url", "")
                     }
                     formatted_batch.append(formatted_article)
