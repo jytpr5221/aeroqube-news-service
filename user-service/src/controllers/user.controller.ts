@@ -28,7 +28,6 @@ import { UserServiceEvents } from "@constants/kafkatopics";
 import requestIp from "request-ip";
 import { UserSession } from "@models/usersession.model";
 import { redisClient, redisService } from "@configs/redis.config";
-import { platform } from "os";
 
 export default class UserController {
   public registerUser = asyncHandler(async (req: Request, res: Response) => {
@@ -412,22 +411,49 @@ export default class UserController {
     );
   });
 
+  public deleteMe = asyncHandler(async (req: Request, res: Response) => {
+
+      const user = req.user;
+      if (!user) {
+        throw new NotAuthorizedError("User not found");
+      }
+
+      const existingUser = await User.findById(user.id);
+      if (!existingUser) {
+        throw new NotFoundError("User not found");
+      }
+
+      const deleteActiveSessions = await UserSession.deleteMany({
+        userId: existingUser._id,
+      });
+
+      if (!deleteActiveSessions) {
+        throw new ServerError("Something went wrong while deleting sessions");
+      }
+
+      await existingUser.deleteOne();
+
+      const cacheKey = `user:${existingUser.name || "null"}:${existingUser.email || "null"}`;
+
+      await redisService.del(cacheKey);
+      return new ItemDeletedResponse("User Deleted Successfully");
+  })
+
   public deleteUser = asyncHandler(async (req: Request, res: Response) => {
-    const { userId } = req.user;
+
+    if( req.user.role !== UserType.SUPERADMIN && req.user.role !== UserType.ADMIN) {
+      throw new ForbiddenError("You are not authorized to access this resource");
+    }
+    const { userId } = req.params as { userId: string };
 
     const existingUser = await User.findById(userId);
     if (!existingUser) {
       return new NotFoundError("User not found");
     }
 
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) {
-      throw new BadRequestError("Token is missing");
-    }
-
-    const blacklistToken = await BlacklistToken.create({
-      token: token,
-    });
+    const deleteActiveSessions = await UserSession.deleteMany({
+      userId: existingUser._id,
+    })
 
     await existingUser.deleteOne();
 
@@ -670,8 +696,7 @@ export default class UserController {
     );
   });
 
-  public deleteUserSession = asyncHandler(
-    async (req: Request, res: Response) => {
+  public deleteUserSession = asyncHandler(async (req: Request, res: Response) => {
       const { sessionId } = req.params;
 
       if (!sessionId) {
