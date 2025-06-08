@@ -32,6 +32,7 @@ class UserRouter {
        this.router.get('/', authenticateToken, validateRequest(GetUserByRoleSchema,ValidationSource.QUERY), userController.getUserByRole);
        this.router.get('/sessions', authenticateToken, userController.getAllSessions);
        this.router.delete('/sessions/:sessionId', authenticateToken, userController.deleteUserSession);
+       this.router.put('/change-role/:userId', authenticateToken, validateRequest(GetUserByIdSchema, ValidationSource.PARAMS), userController.changeUserRole);
 
        return this.router;
     }

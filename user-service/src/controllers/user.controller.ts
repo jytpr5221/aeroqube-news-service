@@ -412,37 +412,42 @@ export default class UserController {
   });
 
   public deleteMe = asyncHandler(async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) {
+      throw new NotAuthorizedError("User not found");
+    }
 
-      const user = req.user;
-      if (!user) {
-        throw new NotAuthorizedError("User not found");
-      }
+    const existingUser = await User.findById(user.id);
+    if (!existingUser) {
+      throw new NotFoundError("User not found");
+    }
 
-      const existingUser = await User.findById(user.id);
-      if (!existingUser) {
-        throw new NotFoundError("User not found");
-      }
+    const deleteActiveSessions = await UserSession.deleteMany({
+      userId: existingUser._id,
+    });
 
-      const deleteActiveSessions = await UserSession.deleteMany({
-        userId: existingUser._id,
-      });
+    if (!deleteActiveSessions) {
+      throw new ServerError("Something went wrong while deleting sessions");
+    }
 
-      if (!deleteActiveSessions) {
-        throw new ServerError("Something went wrong while deleting sessions");
-      }
+    await existingUser.deleteOne();
 
-      await existingUser.deleteOne();
+    const cacheKey = `user:${existingUser.name || "null"}:${
+      existingUser.email || "null"
+    }`;
 
-      const cacheKey = `user:${existingUser.name || "null"}:${existingUser.email || "null"}`;
-
-      await redisService.del(cacheKey);
-      return new ItemDeletedResponse("User Deleted Successfully");
-  })
+    await redisService.del(cacheKey);
+    return new ItemDeletedResponse("User Deleted Successfully");
+  });
 
   public deleteUser = asyncHandler(async (req: Request, res: Response) => {
-
-    if( req.user.role !== UserType.SUPERADMIN && req.user.role !== UserType.ADMIN) {
-      throw new ForbiddenError("You are not authorized to access this resource");
+    if (
+      req.user.role !== UserType.SUPERADMIN &&
+      req.user.role !== UserType.ADMIN
+    ) {
+      throw new ForbiddenError(
+        "You are not authorized to access this resource"
+      );
     }
     const { userId } = req.params as { userId: string };
 
@@ -453,7 +458,7 @@ export default class UserController {
 
     const deleteActiveSessions = await UserSession.deleteMany({
       userId: existingUser._id,
-    })
+    });
 
     await existingUser.deleteOne();
 
@@ -675,6 +680,37 @@ export default class UserController {
     }
 
     return new ItemFetchedResponse("Users Fetched Successfully", users);
+  });
+
+  public changeUserRole = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user.role || req.user.role !== UserType.SUPERADMIN) {
+      throw new ForbiddenError(
+        "You are not authorized to access this resource"
+      );
+    }
+
+    const { userId } = req.params as { userId: string };
+    const { currRole, changedRole } = req.body as {
+      currRole: string;
+      changedRole: string;
+    };
+
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        role: currRole,
+      },
+      {
+        role: changedRole,
+      },
+      {
+        new: true,
+      }
+    );
+
+    if(!updatedUser) throw new ServerError('Error in updating user!')
+
+    return new ItemUpdatedResponse('User role updated',updatedUser)
   });
 
   public getAllSessions = asyncHandler(async (req: Request, res: Response) => {

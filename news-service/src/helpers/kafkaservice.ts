@@ -212,7 +212,7 @@ export async function configureKafka() {
         return;
       }
 
-      console.log('articles found: ',validArticles)
+      // console.log('articles found: ',validArticles)
 
       try {
         const news = await News.insertMany(validArticles, { ordered: false });
