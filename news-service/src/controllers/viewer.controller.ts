@@ -1,7 +1,7 @@
 import { Category } from "@models/category.model";
 import { News, NewsStatus } from "@models/news.model";
 import RedisService, { redisService } from "@root/configs/redis.config";
-import { BadRequestError, ServerError } from "@utils/ApiError";
+import { BadRequestError, NotFoundError, ServerError } from "@utils/ApiError";
 import { ItemFetchedResponse } from "@utils/ApiResponse";
 import { asyncHandler } from "@utils/AsyncHandler";
 import { Request, Response } from "express";
@@ -78,8 +78,10 @@ export class ViewerController {
       status: NewsStatus.PUBLISHED,
     }).sort({ createdAt: -1 });
 
-    if (!categoryNews || categoryNews.length === 0) {
-      throw new ServerError("No news found");
+    if(!categoryNews) throw new ServerError('Something went wrong')
+      
+    if ( categoryNews.length === 0) {
+      throw new NotFoundError("No news found");
     }
 
     await redisService.set(
