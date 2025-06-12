@@ -1,5 +1,6 @@
 import * as AWS from 'aws-sdk'
 import { ServerError } from './ApiError'
+import logger from "@utils/logger";
 
 
 const s3config = {
@@ -25,7 +26,7 @@ export const uploadAttachmentToS3 = async (
   mimetype: string
 ) => {
   try {
-    console.log('process',process.env.AWS_REGION,process.env.AWS_ACCESS_KEY)
+    logger.info('process',process.env.AWS_REGION,process.env.AWS_ACCESS_KEY)
     const params: AWS.S3.Types.PutObjectRequest = {
       Bucket:s3config.bucket,
       Key: `${Date.now().toString()}-${fileName}`,
@@ -34,17 +35,17 @@ export const uploadAttachmentToS3 = async (
     }
 
     
-    console.log('Uploading to S3 with params:', {
+    logger.info('Uploading to S3 with params:', {
       ...params,
       Body: '[Buffer]' // Don't log the actual buffer
     })
  
-    console.log(s3.config.credentials)
+    logger.info(s3.config.credentials)
     const uploadResult = await s3.upload(params).promise()
-    console.log('S3 upload successful:', uploadResult.Location)
+    logger.info('S3 upload successful', { location: uploadResult.Location })
     return uploadResult
   } catch (error) {
-    console.error('S3 upload error:', error)
+    logger.error('S3 upload error', error)
     throw new ServerError('Failed to upload file to S3')
   }
 }

@@ -1,13 +1,14 @@
 import { ServerError } from "@utils/ApiError";
 import nodemailer from "nodemailer";
 
-const transporter =  nodemailer.createTransport({
-    host: "sandbox.smtp.mailtrap.io",
-    port: 2525,
+const transporter = nodemailer.createTransport({
+    host: process.env.AWS_SES_HOST,
+    port: 587,
+    secure: false,
     auth: {
-      user: process.env.MAILTRAP_USERID,
-      pass: process.env.MAILTRAP_PASSWORD,
-    }
+      user: process.env.AWS_SES_USERID,
+      pass: process.env.AWS_SES_PASSWORD,
+    },
   });
 
 export const sendEmail = async(email:string,body:string)=>{
@@ -17,7 +18,7 @@ export const sendEmail = async(email:string,body:string)=>{
 
     const mailOptions ={
 
-        from:process.env.MAIL_SERVICE,
+        from:process.env.AWS_SES_SENDER,
         to:email,
         subject:"Welcome to Aeroqube News! Please verify your email",
         html:body

@@ -6,12 +6,16 @@ import { ItemFetchedResponse } from "@utils/ApiResponse";
 import { asyncHandler } from "@utils/AsyncHandler";
 import { Request, Response } from "express";
 import mongoose, { Schema, Types } from "mongoose";
+import logger from "@utils/logger";
+import { log } from "console";
 
 export class ViewerController {
   public getAllNews = asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Get all news attempt');
     
     const cachedNews = await redisService.get('all-news');
     if (cachedNews) {
+      logger.info('All news fetched from cache');
       return new ItemFetchedResponse(
         "All news fetched successfully (from cache)",
         JSON.parse(cachedNews)
@@ -21,15 +25,19 @@ export class ViewerController {
     const allNews = await News.find({
       status: NewsStatus.PUBLISHED,
     })
-      .sort({ createdAt: -1 })
-      
+      .sort({ createdAt: -1 }).populate('category')
 
-    if (!allNews || allNews.length === 0) {
+    
+    if (!allNews) {
       throw new ServerError("No news found");
     }
 
-    await redisService.set('all-news', JSON.stringify(allNews), 60 * 60);
+    if(allNews.length === 0)
+      throw new NotFoundError("No news found");
+      
 
+    await redisService.set('all-news', JSON.stringify(allNews), 60 * 60);
+    logger.info('All news fetched from DB');
     return new ItemFetchedResponse("All news fetched successfully", allNews);
   });
 
@@ -42,6 +50,7 @@ export class ViewerController {
 
     const cachedNews = await redisService.get(`category-news/${categoryId}`);
     if (cachedNews) {
+      logger.info('Category news fetched from cache');
       return new ItemFetchedResponse(
         "Category news fetched successfully",
         JSON.parse(cachedNews)
@@ -78,7 +87,10 @@ export class ViewerController {
       status: NewsStatus.PUBLISHED,
     }).sort({ createdAt: -1 });
 
-    if(!categoryNews) throw new ServerError('Something went wrong')
+    if(!categoryNews) {
+      logger.error(`No news found for category with ID: ${categoryId}`);
+      throw new ServerError("Something went wrong while fetching category news");
+    }
       
     if ( categoryNews.length === 0) {
       throw new NotFoundError("No news found");
@@ -89,7 +101,7 @@ export class ViewerController {
       JSON.stringify(categoryNews),
       60 * 30
     );
-
+    logger.info('Category news fetched from DB');
     return new ItemFetchedResponse(
       "Category news fetched successfully",
       categoryNews
@@ -105,6 +117,7 @@ export class ViewerController {
 
     const cachedFeed = await redisService.get(`user-feed/${req.user._id}`);
     if (cachedFeed) {
+      logger.info('User feed fetched from cache');
       return new ItemFetchedResponse(
         "User feed fetched successfully",
         JSON.parse(cachedFeed)
@@ -116,22 +129,30 @@ export class ViewerController {
       status: NewsStatus.PUBLISHED,
     }).sort({ createdAt: -1 });
 
-    if (!userFeed || userFeed.length === 0) {
+    if (!userFeed) {
+      logger.error(`No news found for user with ID: ${req.user._id}`);
       throw new ServerError("No news found");
     }
+
+    if( userFeed.length === 0){
+      logger.warn(`No news found for user with ID: ${req.user._id}`);
+      throw new NotFoundError('No news found')
+    }
+      
 
     await redisService.set(
       `user-feed/${req.user._id}`,
       JSON.stringify(userFeed),
       60 * 60
     );
-
+    logger.info('User feed fetched from DB');
     return new ItemFetchedResponse("User feed fetched successfully", userFeed);
   });
 
   public getLatestNews = asyncHandler(async (req: Request, res: Response) => {
     const cachedNews = await redisService.get("latest-news");
     if (cachedNews) {
+      logger.info('Latest news fetched from cache');
       return new ItemFetchedResponse(
         "Default news fetched successfully",
         JSON.parse(cachedNews)
@@ -151,10 +172,19 @@ export class ViewerController {
       },
     ]);
 
-    if (!latestNews || latestNews.length === 0) {
-      throw new ServerError("No news found");
+    if (!latestNews) {
+      logger.error("No news found");
+      throw new ServerError("No news found in the last two days");
     }
+
+    if(latestNews.length === 0){
+      logger.warn("No news found in the last two days");
+      throw new NotFoundError("No news found in the last two days");
+    }
+
+
     await redisService.set("latest-news", JSON.stringify(latestNews), 60 * 30);
+    logger.info('Latest news fetched from DB');
     return new ItemFetchedResponse(
       "Latest news fetched successfully",
       latestNews
@@ -170,6 +200,7 @@ export class ViewerController {
 
     const cachedNews = await redisService.get(`news/${newsId}`);
     if (cachedNews) {
+      logger.info('News by id fetched from cache');
       return new ItemFetchedResponse(
         "News fetched successfully",
         JSON.parse(cachedNews)
@@ -182,11 +213,17 @@ export class ViewerController {
     });
 
     if (!news) {
-      throw new ServerError("News not found");
+      logger.error("News not found");
+      throw new ServerError(`News with ID ${newsId} not found`);
+    }
+
+    if (!news) {
+      logger.warn(`News with ID ${newsId} not found`);
+      throw new NotFoundError("News not found");
     }
 
     await redisService.set(`news/${newsId}`, JSON.stringify(news), 60 * 60);
-
+    logger.info('News by id fetched from DB');
     return new ItemFetchedResponse("News fetched successfully", news);
   });
 
@@ -199,6 +236,7 @@ export class ViewerController {
 
     const cachedNews = await redisService.get(`news/tag/${tag}`);
     if (cachedNews) {
+      logger.info('News by tag fetched from cache');
       return new ItemFetchedResponse(
         "News by tag fetched successfully",
         JSON.parse(cachedNews)
@@ -210,16 +248,21 @@ export class ViewerController {
       status: NewsStatus.PUBLISHED,
     }).sort({ createdAt: -1 });
 
-    if (!newsByTag || newsByTag.length === 0) {
+    if (!newsByTag) {
+      logger.error("No news found for this tag");
       throw new ServerError("No news found for this tag");
     }
 
+    if(newsByTag.length === 0){
+      logger.warn("No news found for this tag");
+      throw new NotFoundError("No news found for this tag");
+    }
     await redisService.set(
       `news/tag/${tag}`,
       JSON.stringify(newsByTag),
       60 * 30
     );
-
+    logger.info('News by tag fetched from DB');
     return new ItemFetchedResponse(
       "News by tag fetched successfully",
       newsByTag
@@ -238,6 +281,7 @@ export class ViewerController {
     const cachedNews = await redisService.get(cacheKey);
 
     if (cachedNews) {
+      logger.info('News by search fetched from cache');
       return new ItemFetchedResponse(
         "News by search fetched successfully",
         JSON.parse(cachedNews)
@@ -250,12 +294,18 @@ export class ViewerController {
     }).sort({ createdAt: -1 })
  
 
-    if (!newsBySearch || newsBySearch.length === 0) {
+    if (!newsBySearch ) {
+      logger.error("No news found for this search query");
       throw new ServerError("No news found for this search query");
     }
 
-    await redisService.set(cacheKey, JSON.stringify(newsBySearch), 60 * 30); // 30 minutes
+    if(newsBySearch.length === 0){
+      logger.warn("No news found for this search query");
+      throw new NotFoundError("No news found for this search query");
+    }
 
+    await redisService.set(cacheKey, JSON.stringify(newsBySearch), 60 * 30); // 30 minutes
+    logger.info('News by search fetched from DB');
     return new ItemFetchedResponse(
       "News by search fetched successfully",
       newsBySearch
@@ -282,8 +332,14 @@ export class ViewerController {
         status: NewsStatus.PUBLISHED,
       }).sort({ createdAt: -1 });
 
-      if (!newsByReporter || newsByReporter.length === 0) {
+      if (!newsByReporter ) {
+        logger.error(`No news found for reporter with ID: ${reporterId}`);
         throw new ServerError("No news found for this reporter");
+      }
+
+      if(newsByReporter.length === 0){
+        logger.warn(`No news found for reporter with ID: ${reporterId}`);
+        throw new NotFoundError("No news found for this reporter");
       }
 
       await redisService.set(
@@ -315,8 +371,14 @@ export class ViewerController {
       status: NewsStatus.PUBLISHED,
     }).sort({ createdAt: -1 });
 
-    if (!newsBySource || newsBySource.length === 0) {
+    if (!newsBySource ) {
+      logger.error("No news found for this source");
       throw new ServerError("No news found for this source");
+    }
+
+    if(newsBySource.length === 0){
+      logger.warn("No news found for this source");
+      throw new NotFoundError("No news found for this source");
     }
 
     await redisService.set(

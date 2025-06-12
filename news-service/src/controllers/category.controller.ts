@@ -8,6 +8,7 @@ import { ItemCreatedResponse, ItemDeletedResponse, ItemFetchedResponse, ItemUpda
 import { asyncHandler } from "@utils/AsyncHandler";
 import { Request,Response } from "express";
 import { Schema } from "mongoose";
+import logger from "@utils/logger";
 
 export default class CategoryController{
 
@@ -18,6 +19,9 @@ export default class CategoryController{
         if (allKeys.length > 0) {
             await Promise.all(allKeys.map(key => redisClient.del(key)));
         }
+        logger.info('Category cache cleared after create');
+        logger.info('Category cache cleared after update');
+        logger.info('Category cache cleared after delete');
     }
 
     public createNewCategory = asyncHandler(async(req:Request,res:Response)=>{
@@ -27,6 +31,8 @@ export default class CategoryController{
         if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN)
             throw new ForbiddenError("You are not authorized to create a new category")
 
+        logger.info(`Create category attempt by userId: ${req.user._id}`);
+
         await publish({
             topic: "category-service",
             event: CategoryEvents.CREATE_CATEGORY,
@@ -35,6 +41,8 @@ export default class CategoryController{
                 parent
             }
         })
+
+        logger.info(`Publishing category create event for userId: ${req.user._id}`);
 
         // Clear cache after creating new category
         await this.clearCategoryCache();
@@ -49,6 +57,8 @@ export default class CategoryController{
         if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN)
             throw new ForbiddenError("You are not authorized to update a category")
             
+        logger.info(`Update category attempt by userId: ${req.user._id}`);
+
         await publish({
             topic: "category-service",
             event: CategoryEvents.UPDATE_CATEGORY,
@@ -57,6 +67,8 @@ export default class CategoryController{
                 parent
             }
         })
+
+        logger.info(`Publishing category update event for userId: ${req.user._id}`);
 
         // Clear cache after updating category
         await this.clearCategoryCache();
@@ -71,6 +83,8 @@ export default class CategoryController{
         if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN)
             throw new ForbiddenError("You are not authorized to delete a category")
             
+        logger.info(`Delete category attempt by userId: ${req.user._id}`);
+
         await publish({
             topic: "category-service",
             event: CategoryEvents.DELETE_CATEGORY,
@@ -78,6 +92,8 @@ export default class CategoryController{
                 categoryId
             }
         })
+
+        logger.info(`Publishing category delete event for userId: ${req.user._id}`);
 
         // Clear cache after deleting category
         await this.clearCategoryCache();
@@ -87,11 +103,12 @@ export default class CategoryController{
 
     public getCategories = asyncHandler(async(req:Request,res:Response)=>{
 
+        logger.info('Get categories attempt');
 
         const cachedResponse = await redisClient.get('categories')
 
         if(cachedResponse){
-            console.log(JSON.parse(cachedResponse).length)
+            logger.info('Categories fetched from cache');
             return new ItemFetchedResponse('Categories fetched successfully!!',JSON.parse(cachedResponse))
         }
 
@@ -122,13 +139,18 @@ export default class CategoryController{
 
         await redisClient.set('categories',JSON.stringify(categories),'EX',60*60*24*7)
 
+        logger.info('Categories fetched from DB');
+
         return new ItemFetchedResponse('Categories fetched successfully',categories)
     })
 
     public getParentCategories = asyncHandler(async(req:Request,res:Response)=>{
 
+        logger.info('Get parent categories attempt');
+
         const cachedResponse = await redisClient.get('parent-categories')
         if(cachedResponse){
+            logger.info('Parent categories fetched from cache');
             return new ItemFetchedResponse('Parent categories fetched successfully',JSON.parse(cachedResponse))
         }
 
@@ -162,6 +184,8 @@ export default class CategoryController{
 
         await redisClient.set('parent-categories',JSON.stringify(categories),'EX',60*60*24*7)
         
+        logger.info('Parent categories fetched from DB');
+
         return new ItemFetchedResponse('Parent categories fetched successfully',categories)
     })
 
@@ -169,8 +193,11 @@ export default class CategoryController{
 
         const {categoryId} = req.params as {categoryId:string}
 
+        logger.info('Get category by id attempt');
+
         const cachedResponse = await redisClient.get(`categories:${categoryId}`)
         if(cachedResponse){
+            logger.info('Category by id fetched from cache');
             return new ItemFetchedResponse('Categories fetched successfully',JSON.parse(cachedResponse))
         }
 
@@ -198,6 +225,7 @@ export default class CategoryController{
 
         await redisClient.set(`categories:${categoryId}`,JSON.stringify(category),'EX',60*60*24*7)
 
+        logger.info('Category by id fetched from DB');
         
         return new ItemFetchedResponse('Category fetched successfully',category)
     })

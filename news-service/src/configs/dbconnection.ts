@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import logger from "@utils/logger";
 
 export const dbConnection = async (): Promise<void> => {
   const dbUrl: string | undefined = process.env.MONGODB_URL;
@@ -10,9 +11,9 @@ export const dbConnection = async (): Promise<void> => {
 
   try {
     await mongoose.connect(dbUrl);
-    console.log("DB CONNECTED!");
+    logger.info("DB connected");
   } catch (error) {
-    console.error("ERROR IN DB CONNECTION", error);
+    logger.error("DB connection error", error);
     process.exit(1);
   }
 };

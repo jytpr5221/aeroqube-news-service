@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import { CustomError } from "@utils/ApiError";
 import mongoose from "mongoose";
+import logger from '@utils/logger';
 
 export const errorHandler = (
   err: any,
@@ -10,7 +11,7 @@ export const errorHandler = (
   next: NextFunction
 ): Response => {
   let error = err;
-  console.log(`Running in ${process.env.NODE_ENV} mode`);
+  logger.info(`Running in ${process.env.NODE_ENV} mode`);
 
   if (!(error instanceof CustomError)) {
     const statusCode =
@@ -32,7 +33,7 @@ export const errorHandler = (
     ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
   };
 
-  console.log(response);
+  logger.error(response);
   return res.status(error.statusCode).json(response);
 };
 

@@ -50,7 +50,7 @@ def singleton(cls):
     return get_instance
 
 class NewsFileHandler(FileSystemEventHandler):
-    """Handler for file system events related to the news file"""
+    """Handler for file system events related to the news file. Delegates file cleaning to the producer after Kafka publishing."""
     def __init__(self, kafka_producer: 'NewsKafkaProducer'):
         self.kafka_producer = kafka_producer
         self.last_modified = 0
@@ -269,14 +269,20 @@ class NewsKafkaProducer:
                     except Exception as retry_error:
                         logger.error(f"Failed to send batch {batch_message['batch_number']} after reconnection: {retry_error}")
 
-            # Clean the file after successful processing
-            self.clean_processed_file(file_path)
+            # Clear the file after successful processing
+            self.clear_processed_articles_file(file_path)
+            # Also clear the article links file
+            self.clear_article_links_file(os.path.join('output', 'all_article_links.json'))
 
         except Exception as e:
             logger.error(f"Error processing file {file_path}: {e}")
 
-    def clean_processed_file(self, file_path: str):
-        """Clean the processed articles file after successful Kafka transmission"""
+    def clear_processed_articles_file(self, file_path: str):
+        """
+        Clear the processed articles file after all articles have been successfully published to Kafka.
+        This method creates a backup, empties the file (writes an empty list), and removes the backup if successful.
+        If an error occurs, it restores from the backup.
+        """
         backup_path = f"{file_path}.backup"
         try:
             if os.path.exists(file_path):
@@ -286,20 +292,49 @@ class NewsKafkaProducer:
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump([], f, indent=2)
 
-            logger.info(f"Cleaned processed articles file: {file_path}")
+            logger.info(f"Cleared processed articles file: {file_path}")
 
             if os.path.exists(backup_path):
                 os.remove(backup_path)
                 logger.info(f"Removed backup file: {backup_path}")
 
         except Exception as e:
-            logger.error(f"Error cleaning processed file {file_path}: {e}")
+            logger.error(f"Error clearing processed file {file_path}: {e}")
             if os.path.exists(backup_path):
                 try:
                     os.replace(backup_path, file_path)
-                    logger.info("Restored file from backup after cleaning error")
+                    logger.info("Restored file from backup after clearing error")
                 except Exception as restore_error:
                     logger.error(f"Failed to restore from backup: {restore_error}")
+
+    def clear_article_links_file(self, file_path: str):
+        """
+        Clear the article links file after processing. This method creates a backup, empties the file (writes an empty dict), and removes the backup if successful.
+        If an error occurs, it restores from the backup.
+        """
+        backup_path = f"{file_path}.backup"
+        try:
+            if os.path.exists(file_path):
+                os.replace(file_path, backup_path)
+                logger.info(f"Created backup of article links at {backup_path}")
+
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump({}, f, indent=2)
+
+            logger.info(f"Cleared article links file: {file_path}")
+
+            if os.path.exists(backup_path):
+                os.remove(backup_path)
+                logger.info(f"Removed backup file: {backup_path}")
+
+        except Exception as e:
+            logger.error(f"Error clearing article links file {file_path}: {e}")
+            if os.path.exists(backup_path):
+                try:
+                    os.replace(backup_path, file_path)
+                    logger.info("Restored article links file from backup after clearing error")
+                except Exception as restore_error:
+                    logger.error(f"Failed to restore article links from backup: {restore_error}")
 
     def format_article(self, article: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -633,12 +668,73 @@ class NewsKafkaService:
                     logger.error(f"Failed to send batch {batch_message['batch_number']} to Kafka: {e}")
                     raise
 
-            # Clean the file after successful processing
-            self.clean_processed_file(file_path)
+            # Clear the file after successful processing
+            self.clear_processed_articles_file(file_path)
+            # Also clear the article links file
+            self.clear_article_links_file(os.path.join('output', 'all_article_links.json'))
 
         except Exception as e:
             logger.error(f"Error processing file {file_path}: {e}")
             raise
+
+    def clear_processed_articles_file(self, file_path: str):
+        """
+        Clear the processed articles file after all articles have been successfully published to Kafka.
+        This method creates a backup, empties the file (writes an empty list), and removes the backup if successful.
+        If an error occurs, it restores from the backup.
+        """
+        backup_path = f"{file_path}.backup"
+        try:
+            if os.path.exists(file_path):
+                os.replace(file_path, backup_path)
+                logger.info(f"Created backup of processed articles at {backup_path}")
+
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump([], f, indent=2)
+
+            logger.info(f"Cleared processed articles file: {file_path}")
+
+            if os.path.exists(backup_path):
+                os.remove(backup_path)
+                logger.info(f"Removed backup file: {backup_path}")
+
+        except Exception as e:
+            logger.error(f"Error clearing processed file {file_path}: {e}")
+            if os.path.exists(backup_path):
+                try:
+                    os.replace(backup_path, file_path)
+                    logger.info("Restored file from backup after clearing error")
+                except Exception as restore_error:
+                    logger.error(f"Failed to restore from backup: {restore_error}")
+
+    def clear_article_links_file(self, file_path: str):
+        """
+        Clear the article links file after processing. This method creates a backup, empties the file (writes an empty dict), and removes the backup if successful.
+        If an error occurs, it restores from the backup.
+        """
+        backup_path = f"{file_path}.backup"
+        try:
+            if os.path.exists(file_path):
+                os.replace(file_path, backup_path)
+                logger.info(f"Created backup of article links at {backup_path}")
+
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump({}, f, indent=2)
+
+            logger.info(f"Cleared article links file: {file_path}")
+
+            if os.path.exists(backup_path):
+                os.remove(backup_path)
+                logger.info(f"Removed backup file: {backup_path}")
+
+        except Exception as e:
+            logger.error(f"Error clearing article links file {file_path}: {e}")
+            if os.path.exists(backup_path):
+                try:
+                    os.replace(backup_path, file_path)
+                    logger.info("Restored article links file from backup after clearing error")
+                except Exception as restore_error:
+                    logger.error(f"Failed to restore article links from backup: {restore_error}")
 
     def start(self):
         """Start the Kafka service"""

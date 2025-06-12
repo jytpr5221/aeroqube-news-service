@@ -9,7 +9,6 @@ const app = express()
 
 // Middleware
 app.use(cors())
-// app.use(express.json())
 
 app.use('/user-service', expressProxy(process.env.USER_SERVICE_URL));
 app.use('/news-service', expressProxy(process.env.NEWS_SERVICE_URL));
@@ -21,7 +20,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
     console.log(`Gateway server listening on port ${PORT}`)
 })

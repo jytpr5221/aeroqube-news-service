@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import logger from "@utils/logger";
 
 export default class RedisService{
 
@@ -10,7 +11,7 @@ export default class RedisService{
             port
         })
         this.redis.on('connect', () => {
-            console.log('Connected to Redis');
+            logger.info('Connected to Redis');
         });
     }
 
@@ -21,9 +22,9 @@ export default class RedisService{
     public async ping(){
         try{
            const response =  await this.redis.ping()
-           console.log(`Redis ping response: ${response}`);
+           logger.info(`Redis ping: ${response}`);
         }catch(error){
-            console.error(`Redis ping error: ${error}`);
+            logger.error(`Redis ping error: ${error}`);
         }
     }
 

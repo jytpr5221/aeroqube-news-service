@@ -7,6 +7,7 @@ import { Application, ApplicationStatus } from "@models/application.model";
 import { ServerError } from "@utils/ApiError";
 import { redisService } from "@configs/redis.config";
 import { User, UserType } from "@models/user.model";
+import logger from '@utils/logger';
 
 let kafkaProducer: Producer;
 let emailConsumer: Consumer;
@@ -30,7 +31,7 @@ export async function configureKafka() {
   // Connect producer
   kafkaProducer = kafkaService.createProducer();
   await kafkaProducer.connect();
-  console.log("Kafka Producer connected");
+  logger.info("Kafka Producer connected");
 
   // Email consumer
   emailConsumer = kafkaService.createConsumer("email-consumer");
@@ -40,11 +41,12 @@ export async function configureKafka() {
   await emailConsumer.run({
     eachMessage: async ({ message }) => {
       const value = JSON.parse(message.value?.toString() || '{}');
-      console.log("Send email event", value);
+      logger.info('Email event received');
       sendEmail(value.email, value.emailBody);
+      logger.info('Email sent');
     },
   });
-  console.log("Email Consumer connected");
+  logger.info("Email Consumer connected");
 
   // Application consumer
   applicationConsumer = kafkaService.createConsumer("application-consumer");
@@ -58,7 +60,7 @@ export async function configureKafka() {
       
       switch (key) {
         case ApplicationServiceEvents.APPLICATION_CREATED:
-          console.log("Application created event", value);
+          logger.info('APPLICATION_CREATED event received');
           try {
             const application = await Application.create({
               reporterId: value.reporterId,
@@ -68,23 +70,24 @@ export async function configureKafka() {
               createdAt: value.createdAt,
               documents: value.documents,
             });
-            console.log("Application created", application);
+            logger.info(`Application created: ${application._id}`);
             
             const reporter = await User.findById(value.reporterId);
             if (!reporter) {
+              logger.warn(`User not found for reporterId: ${value.reporterId}`);
               throw new ServerError("User not found");
             }
             reporter.role = UserType.PENDINGREPORTER; 
             await reporter.save();
-            console.log("User role updated", reporter)
+            logger.info(`User role updated to PENDINGREPORTER for userId: ${reporter._id}`);
           } catch (error) {
-            console.error("Error creating application", error);
+            logger.error(`Error creating application: ${error}`);
             throw new ServerError("Error creating application");
           }
           break;
 
         case ApplicationServiceEvents.APPLICATION_UPDATED:
-          console.log("Application updated event", value);
+          logger.info('APPLICATION_UPDATED event received');
           try {
             const application = await Application.findByIdAndUpdate(
               value.applicationId,
@@ -98,19 +101,18 @@ export async function configureKafka() {
               { new: true }
             );
             if (!application) {
+              logger.error(`Application not found for id: ${value.applicationId}`);
               throw new ServerError("Application not found");
             }
-            console.log("Application updated", application);
-            
-            
+            logger.info(`Application updated: ${application._id}`);
           } catch (error) {
-            console.error("Error updating application", error);
+            logger.error(`Error updating application: ${error}`);
             throw new ServerError("Error updating application");
           }
           break;
 
         case ApplicationServiceEvents.APPLICATION_VERIFIED:
-          console.log("Application verified event", value);
+          logger.info('APPLICATION_VERIFIED event received');
           try {
             const application = await Application.findByIdAndUpdate(
               value.applicationId,
@@ -124,34 +126,37 @@ export async function configureKafka() {
             );
 
             if (!application) {
+              logger.error(`Application not found for id: ${value.applicationId}`);
               throw new ServerError("Application not found");
             }
-            console.log("Application verified", application);
+            logger.info(`Application verified: ${application._id}`);
 
               const user = await User.findById(value.reporterId);
               if (!user) {
+                logger.error(`User not found for reporterId: ${value.reporterId}`);
                 throw new ServerError("User not found");
               }
               user.role=UserType.REPORTER
               user.isActive=true
               await user.save();
-              console.log("User role updated", user);
+              logger.info(`User role updated to REPORTER and activated for userId: ${user._id}`);
 
             if (user.email) {
               const emailBody = `
                 <h1>Application Verified!!🎉🎉</h1>
-                <p>Your reporter application has been verified. You can now start contributing to Aeroqube News.</p>
+                <p>Congratulations and Welcome ${user.name}!! Your reporter application has been verified. You can now start contributing to Aeroqube News.</p>
               `;
               sendEmail(user.email, emailBody);
+              logger.info('Verification email sent');
             }
           } catch (error) {
-            console.error("Error verifying application", error);
+            logger.error(`Error verifying application: ${error}`);
             throw new ServerError("Error verifying application");
           }
           break;
 
         case ApplicationServiceEvents.APPLICATION_REJECTED:
-          console.log("Application rejected event", value);
+          logger.info('APPLICATION_REJECTED event received');
           try {
             const application = await Application.findByIdAndUpdate(
               value.applicationId,
@@ -164,9 +169,10 @@ export async function configureKafka() {
               { new: true }
             );
             if (!application) {
+              logger.error(`Application not found for id: ${value.applicationId}`);
               throw new ServerError("Application not found");
             }
-            console.log("Application rejected", application);
+            logger.info(`Application rejected: ${application._id}`);
             
             
 
@@ -178,32 +184,34 @@ export async function configureKafka() {
                 ${value.message ? `<p>Reason: ${value.message}</p>` : ''}
               `;
               sendEmail(value.email, emailBody);
+              logger.info('Rejection email sent');
             }
           } catch (error) {
-            console.error("Error rejecting application", error);
+            logger.error(`Error rejecting application: ${error}`);
             throw new ServerError("Error rejecting application");
           }
           break;
 
         case ApplicationServiceEvents.APPLICATION_DELETED:
-          console.log("Application deleted event", value);
+          logger.info('APPLICATION_DELETED event received');
           try {
             const application = await Application.findByIdAndDelete(value.applicationId);
             if (!application) {
+              logger.error(`Application not found for id: ${value.applicationId}`);
               throw new ServerError("Application not found");
             }
-            console.log("Application deleted", application);
+            logger.info(`Application deleted: ${application._id}`);
             
             
           } catch (error) {
-            console.error("Error deleting application", error);
+            logger.error(`Error deleting application: ${error}`);
             throw new ServerError("Error deleting application");
           }
           break;
       }
     },
   });
-  console.log("Application Consumer connected");
+  logger.info("Application Consumer connected");
 }
 
 //publish news on kafka topic
@@ -217,7 +225,6 @@ export const publish = async (data:IProduceMessage): Promise<boolean> => {
       },
     ],
   });
-  console.log("publishing result", result);
   return result.length > 0;
 };
 

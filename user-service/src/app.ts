@@ -5,9 +5,14 @@ import cors from "cors";
 import { errorHandler } from "@middlewares/ErrorHandler";
 import ApplicationRouter from "@routes/application.route";
 
+const gateway = 'http://localhost:5000';
 
-
-app.use(cors())
+app.use(cors(
+  {
+    origin: gateway,
+    credentials: true,
+  }
+))
 
 
 app.use(express.json());

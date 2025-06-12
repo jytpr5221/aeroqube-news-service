@@ -5,6 +5,7 @@ import { Category } from "@models/category.model";
 import { Languages, News, NewsStatus } from "@models/news.model";
 import { KafkaService } from "@root/configs/kafka.config";
 import { Consumer, Producer } from "kafkajs";
+import logger from "@utils/logger";
 
 // Helper function to sanitize text
 function sanitizeText(text: string): string {
@@ -69,7 +70,7 @@ export async function configureKafka() {
   // Kafka producer
   kafkaProducer = kafkaService.createProducer();
   await kafkaProducer.connect();
-  console.log("Kafka Producer connected");
+  logger.info("Kafka Producer connected");
 
   // Kafka news consumer
   newsConsumer = kafkaService.createConsumer("news-consumer");
@@ -86,7 +87,7 @@ export async function configureKafka() {
 
       switch (key) {
         case NewsServiceEvents.UPLOAD_NEWS:
-          console.log("News Upload message received");
+          logger.info("News Upload message received");
           try {
             const news = await News.create({
               title: value.title,
@@ -101,14 +102,14 @@ export async function configureKafka() {
               isSystemGenerated: false,
               imageURLs: value.imageURLs,
             });
-            console.log("News Upload message processed", news);
+            logger.info("News Upload message processed");
           } catch (error) {
-            console.error("Error processing news upload message", error);
+            logger.error("Error processing news upload message", error);
           }
           break;
 
         case NewsServiceEvents.UPDATE_NEWS:
-          console.log("News Update message received");
+          logger.info("News Update message received");
           try {
             const news = await News.findByIdAndUpdate(
               value.newsId,
@@ -126,14 +127,14 @@ export async function configureKafka() {
               },
               { new: true }
             );
-            console.log("News Update message processed", news);
+            logger.info("News Update message processed");
           } catch (error) {
-            console.error("Error processing news update message", error);
+            logger.error("Error processing news update message", error);
           }
           break;
 
         case NewsServiceEvents.VERIFY_NEWS:
-          console.log("News Verify message received");
+          logger.info("News Verify message received");
           try {
             const news = await News.findByIdAndUpdate(
               value.newsId,
@@ -144,44 +145,41 @@ export async function configureKafka() {
               },
               { new: true }
             );
-            console.log("News Verify message processed", news);
+            logger.info("News Verify message processed");
           } catch (error) {
-            console.error("Error processing news verify message", error);
+            logger.error("Error processing news verify message", error);
           }
           break;
 
         case NewsServiceEvents.DELETE_NEWS:
-          console.log("News deletion message received");
+          logger.info("News deletion message received");
           try {
             const news = await News.findByIdAndDelete(value.newsId);
-            console.log("News deleted Successfully", news);
+            logger.info("News deleted");
           } catch (error) {
-            console.error("Error processing news delete message", error);
+            logger.error("Error processing news delete message", error);
           }
           break;
 
         default:
-          console.warn("Unknown event received:", key);
+          logger.warn("Unknown event received", key);
           break;
       }
     },
   });
 
-  console.log("News Consumer connected");
+  logger.info("News Consumer connected");
 
   // Kafka extracted news consumer
   extractedNewsConsumer = kafkaService.createConsumer("extractionnewsconsumer");
   await extractedNewsConsumer.connect();
-  console.log(
-    "Connected to Kafka consumer for news-extraction topic",
-    new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-  );
+  logger.info("Connected to Kafka consumer for news-extraction topic");
 
   await extractedNewsConsumer.subscribe({
     topic: "news-extraction",
     fromBeginning: true,
   });
-  console.log("Subscribed to news-extraction topic");
+  logger.info("Subscribed to news-extraction topic");
 
   await extractedNewsConsumer.run({
     eachMessage: async ({ message }) => {
@@ -191,16 +189,16 @@ export async function configureKafka() {
       try {
         value = JSON.parse(rawValue);
       } catch (e) {
-        console.error("Failed to parse message:", e);
+        logger.error("Failed to parse message", e);
         return;
       }
 
       if (!value.articles || !Array.isArray(value.articles)) {
-        console.error("Invalid message format - missing articles array");
+        logger.error("Invalid message format - missing articles array");
         return;
       }
 
-      console.log(`News received: ${value.articles.length} articles`);
+      logger.info(`News received: ${value.articles.length} articles`);
 
       const validArticles = value.articles.filter(
         (article: any) =>
@@ -208,7 +206,7 @@ export async function configureKafka() {
       );
 
       if (validArticles.length === 0) {
-        console.error("No valid articles found - missing title or category");
+        logger.error("No valid articles found - missing title or category");
         return;
       }
 
@@ -216,14 +214,14 @@ export async function configureKafka() {
 
       try {
         const news = await News.insertMany(validArticles, { ordered: false });
-        console.log(`News inserted: ${news.length} articles`);
+        logger.info(`News inserted: ${news.length} articles`);
       } catch (error: any) {
         if (error.code === 11000) {
-          console.error("Duplicate key error - some articles already exist");
+          logger.error("Duplicate key error - some articles already exist");
         } else if (error.name === "ValidationError") {
-          console.error("Validation error:", error.message);
+          logger.error("Validation error", error.message);
         } else {
-          console.error("Error inserting news:", error.message);
+          logger.error("Error inserting news", error.message);
         }
       }
     },
@@ -244,7 +242,7 @@ export async function configureKafka() {
 
       switch (key) {
         case CategoryEvents.CREATE_CATEGORY:
-          console.log("Category Create message received");
+          logger.info("Category Create message received");
           try {
             const category = await Category.create({
               name: value.name,
@@ -253,14 +251,14 @@ export async function configureKafka() {
               updatedAt: new Date(),
             });
             await redisClient.del("categories");
-            console.log("Category Create message processed", category);
+            logger.info("Category Create message processed");
           } catch (error) {
-            console.error("Error processing category create message", error);
+            logger.error("Error processing category create message", error);
           }
           break;
 
         case CategoryEvents.UPDATE_CATEGORY:
-          console.log("Category Update message received");
+          logger.info("Category Update message received");
           try {
             const category = await Category.findByIdAndUpdate(
               value.categoryId,
@@ -273,25 +271,25 @@ export async function configureKafka() {
             );
             await redisClient.del("categories");
 
-            console.log("Category Update message processed", category);
+            logger.info("Category Update message processed");
           } catch (error) {
-            console.error("Error processing category update message", error);
+            logger.error("Error processing category update message", error);
           }
           break;
 
         case CategoryEvents.DELETE_CATEGORY:
-          console.log("Category Delete message received");
+          logger.info("Category Delete message received");
           try {
             const category = await Category.findByIdAndDelete(value.categoryId);
             await redisClient.del("categories");
-            console.log("Category Delete message processed", category);
+            logger.info("Category Delete message processed");
           } catch (error) {
-            console.error("Error processing category delete message", error);
+            logger.error("Error processing category delete message", error);
           }
           break;
 
         default:
-          console.warn("Unknown event received:", key);
+          logger.warn("Unknown event received", key);
           break;
       }
     },
@@ -321,17 +319,11 @@ export async function configureKafka() {
         if (Array.isArray(translated_service)) {
           translated_service.forEach((entry) => {
             if (entry.content?.length < 50 || entry.content?.includes("...")) {
-              console.warn(
-                "⚠️ Truncated or invalid translation content:",
-                entry.content
-              );
+              logger.warn("Truncated or invalid translation content", entry.content);
             }
 
             if (entry.headline?.length < 10) {
-              console.warn(
-                "⚠️ Headline too short or incomplete:",
-                entry.headline
-              );
+              logger.warn("Headline too short or incomplete", entry.headline);
             }
 
             // Optionally sanitize:
@@ -341,7 +333,7 @@ export async function configureKafka() {
           });
         }
 
-        console.log("✅ Cleaned Message:", JSON.stringify(parsedNews, null, 2));
+        logger.info("Cleaned Message");
 
         const response = await News.findByIdAndUpdate(
           parsedNews.newsId,
@@ -353,7 +345,7 @@ export async function configureKafka() {
           },
           { new: true }
         );
-        console.log("Service generated news updated successfully", response);
+        logger.info("Service generated news updated");
         await redisService.del(`category-news/${response.category}`);
         await redisService.del('latest-news');
         await redisService.del('all-news');
@@ -361,10 +353,7 @@ export async function configureKafka() {
         await redisService.del(`news/source/${response.source}`);
         
       } catch (err) {
-        console.error(
-          "Something went wrong while publishing News: ",
-          err.message
-        );
+        logger.error("Something went wrong while publishing News", err.message);
       }
     },
   });
@@ -373,7 +362,7 @@ export async function configureKafka() {
 // Publish news on kafka topic
 export const publish = async (data: IProduceMessage): Promise<boolean> => {
   if (!kafkaProducer) {
-    console.error("Kafka producer not initialized");
+    logger.error("Kafka producer not initialized");
     return false;
   }
 
@@ -387,10 +376,10 @@ export const publish = async (data: IProduceMessage): Promise<boolean> => {
         },
       ],
     });
-    console.log("publishing result", result);
+    logger.info("Publishing result", result);
     return result.length > 0;
   } catch (error) {
-    console.error("Error publishing message", error);
+    logger.error("Error publishing message", error);
     return false;
   }
 };

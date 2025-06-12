@@ -10,12 +10,15 @@ import { uploadAttachmentToS3 } from "@utils/s3uploader";
 import fs from "fs/promises";
 import path from "path";
 import { Schema } from "mongoose";
+import logger from "@utils/logger";
 
 export default class NewsController {
   public uploadNews = asyncHandler(async (req: Request, res: Response) => {
     if(req.user.role !== UserType.REPORTER && req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
         throw new ForbiddenError("You are not allowed to upload news");
     }
+
+    logger.info(`Upload news attempt by userId: ${req.user._id}`);
 
     console.log(req.body)
     const { title, content, category, language, tags, location } = req.body as IUploadNews;
@@ -26,28 +29,27 @@ export default class NewsController {
 
     // Upload images to S3
     const uploadedFileUrls: string[] = [];
-      console.log(req.files)
-      const files = req.files as Express.Multer.File[];
-      await Promise.all(
-        files.map(async (file) => {
-          try {
-            const filePath = path.join(process.cwd(), "uploads", file.filename);
+    logger.info(`Uploading images to S3 for news by userId: ${req.user._id}`);
+    const files = req.files as Express.Multer.File[];
+    await Promise.all(
+      files.map(async (file) => {
+        try {
+          const filePath = path.join(process.cwd(), "uploads", file.filename);
 
-            const fileBuffer = await fs.readFile(filePath);
-            const result = await uploadAttachmentToS3(
-              file.originalname,
-              fileBuffer,
-              file.mimetype
-            );
-            uploadedFileUrls.push(result.Location);
-            console.log(result.Location)
-            await fs.unlink(filePath);
-          } catch (err) {
-            console.error(`Error handling file ${file.originalname}:`, err);
-          }
-        })
-      );
-    console.log(uploadedFileUrls)
+          const fileBuffer = await fs.readFile(filePath);
+          const result = await uploadAttachmentToS3(
+            file.originalname,
+            fileBuffer,
+            file.mimetype
+          );
+          uploadedFileUrls.push(result.Location);
+          await fs.unlink(filePath);
+        } catch (err) {
+          logger.error(`Error handling file ${file.originalname}`);
+        }
+      })
+    );
+    logger.info(`Publishing news upload event for userId: ${req.user._id}`);
     const response = await publish({
         topic:'news-service',
         event: NewsServiceEvents.UPLOAD_NEWS,
@@ -86,26 +88,26 @@ export default class NewsController {
         throw new NotFoundError("News not found");
 
     const uploadedFileUrls: string[] = [];
-      console.log(req.files)
-      const files = req.files as Express.Multer.File[];
-      await Promise.all(
-        files.map(async (file) => {
-          try {
-            const filePath = path.join(process.cwd(), "uploads", file.filename);
+    logger.info(`Edit news attempt by userId: ${req.user._id}, newsId: ${newsId}`);
+    const files = req.files as Express.Multer.File[];
+    await Promise.all(
+      files.map(async (file) => {
+        try {
+          const filePath = path.join(process.cwd(), "uploads", file.filename);
 
-            const fileBuffer = await fs.readFile(filePath);
-            const result = await uploadAttachmentToS3(
-              file.originalname,
-              fileBuffer,
-              file.mimetype
-            );
-            uploadedFileUrls.push(result.Location);
-            await fs.unlink(filePath);
-          } catch (err) {
-            console.error(`Error handling file ${file.originalname}:`, err);
-          }
-        })
-      );
+          const fileBuffer = await fs.readFile(filePath);
+          const result = await uploadAttachmentToS3(
+            file.originalname,
+            fileBuffer,
+            file.mimetype
+          );
+          uploadedFileUrls.push(result.Location);
+          await fs.unlink(filePath);
+        } catch (err) {
+          logger.error(`Error handling file ${file.originalname}`);
+        }
+      })
+    );
 
 
     const response = await publish({
@@ -156,8 +158,12 @@ export default class NewsController {
         },
     })
 
-    if(!response)
-        throw new ServerError("Error while publishing news to kafka");
+    if(!response){
+      logger.error('Error while sending news for kafka: ', newsId);
+      throw new ServerError('Something went wrong while sending news for kafka');
+    }
+
+    logger.info('Service generation request sent for news:', newsId);
 
 
     if(status === NewsStatus.ACCEPTED ){
@@ -172,10 +178,12 @@ export default class NewsController {
         }
       })
 
-      if(!sendForService)
-        throw new ServerError('Error while publishing for service generation')
+      if(!sendForService){
+        logger.error('Error while sending news for service generation: ', newsId);
+        throw new ServerError('Error while sending news for service generation');
+      }
 
-      console.log('Service generation request sent for news:', newsId);
+      logger.info('Service generation request sent for news:', newsId);
     }
 
 
@@ -233,8 +241,13 @@ export default class NewsController {
 
     const newsList = await News.find({}).populate('category').sort({createdAt:-1});
 
-    if(!newsList)
-        throw new NotFoundError("News not found");
+    if(!newsList){
+      logger.error("Something went wrong while fetching all news");
+      throw new ServerError("Something went wrong while fetching all news");
+    }
+
+    if(newsList.length === 0)
+        throw new NotFoundError("No news found");
 
     return new ItemFetchedResponse('All news fetched successfully',newsList)
   }
@@ -249,9 +262,10 @@ export default class NewsController {
 
     const news = await News.findById(newsId).populate('category');
 
-    if(!news)
-        throw new NotFoundError("News not found");
-
+    if(!news){
+      logger.warn(`No news found for newsId: ${newsId}`);
+      throw new NotFoundError("News not found");
+    }
     return new ItemFetchedResponse('News fetched successfully',news)
   }
   )
@@ -265,8 +279,14 @@ export default class NewsController {
 
     const newsList = await News.find({reporterBy:reporterId}).populate('category').sort({createdAt:-1});
 
-    if(!newsList)
-        throw new NotFoundError("News not found");
+    if(!newsList){
+      logger.error(`No news found for reporterId: ${reporterId}`);
+      throw new ServerError("Something went wrong while fetching news by reporter id");
+    }
+
+    if(newsList.length === 0)
+        throw new NotFoundError("No news found for this reporter");
+        
 
     return new ItemFetchedResponse('News fetched successfully',newsList)
   }
@@ -338,8 +358,14 @@ export default class NewsController {
         }
       ])   
 
-    if(!newsList)
-        throw new NotFoundError("News not found");
+    if(!newsList){
+      logger.error(`No news found for categoryId: ${categoryId}`);
+      throw new ServerError("Something went wrong while fetching news by category id");
+    }
+
+    if(newsList.length === 0 || newsList[0].news.length === 0)
+        throw new NotFoundError("No news found for this category");
+        
 
     return new ItemFetchedResponse('News fetched successfully',newsList)
   }
