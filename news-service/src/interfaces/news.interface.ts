@@ -28,5 +28,5 @@ export interface IGetNewsID{
 }
 
 export interface IGetNewsReporter{
-    reporterId:Schema.Types.ObjectId
+    reporterId:string
 }

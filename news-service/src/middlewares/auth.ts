@@ -16,9 +16,6 @@ export const authMiddleware = async (req: any, res: any, next: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-
-        // console.log(response.data.data)
-
         if(!response){
             console.error('Unable to authenticate user')
             return next(new ServerError('Unable to authenticate user'))

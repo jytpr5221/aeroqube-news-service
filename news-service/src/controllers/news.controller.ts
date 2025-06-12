@@ -182,7 +182,6 @@ export default class NewsController {
     return new ItemUpdatedResponse('News verified successfully',null)
   })
 
-
   public getNewsByStatus = asyncHandler(async (req: Request, res: Response) => {
     if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN && req.user.role !== UserType.EDITOR){
         throw new ForbiddenError("You are not allowed to get news by status");

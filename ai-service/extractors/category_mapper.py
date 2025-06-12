@@ -5,78 +5,79 @@ class CategoryMapper:
         # Main categories (parent: null) with their IDs
         self.main_categories = {
             "Politics": {
-                "id": "683d2e003701841aad168de3",
+                "id": "684a60684b112a1955189f9f",
                 "subcategories": {
-                    "Elections": "683d2e173701841aad168de6",
-                    "Policies": "683d2e283701841aad168de9",
-                    "Diplomacy": "683d2e373701841aad168dec",
-                    "Local Politics": "683d2e4e3701841aad168def"
+                    "Elections": "684a60904b112a1955189fa2",
+                    "Policies": "684a60a04b112a1955189fa5",
+                    "Diplomacy": "684a60af4b112a1955189fa8",
+                    "Local Politics": "684a60be4b112a1955189fab"
                 }
             },
             "Business": {
-                "id": "683d2e5d3701841aad168df2",
+                "id": "684a60cd4b112a1955189fae",
                 "subcategories": {
-                    "Markets": "683d2e773701841aad168df5",
-                    "Economy": "683d2ea03701841aad168df8",
-                    "Companies": "683d2eae3701841aad168dfb",
-                    "Startups": "683d2ebc3701841aad168dfe"
+                    "Markets": "684a60da4b112a1955189fb1",
+                    "Economy": "684a60e74b112a1955189fb4",
+                    "Companies": "684a60f74b112a1955189fb7",
+                    "Startups": "684a61094b112a1955189fba"
                 }
             },
             "Sports": {
-                "id": "683d2ed83701841aad168e01",
+                "id": "684a61184b112a1955189fbd",
                 "subcategories": {
-                    "Cricket": "683d2ef03701841aad168e04",
-                    "Football": "683d2f103701841aad168e07",
-                    "Other Sports": "683d2f233701841aad168e0a"
+                    "Cricket": "684a61264b112a1955189fc0",
+                    "Football": "684a61344b112a1955189fc3",
+                    "Other Sports": "684a61444b112a1955189fc6"
                 }
             },
             "Entertainment": {
-                "id": "683d2f443701841aad168e0d",
+                "id": "684a61b74b112a1955189fc9",
                 "subcategories": {
-                    "Bollywood": "683d2f533701841aad168e10",
-                    "Hollywood": "683d2f7f3701841aad168e13",
-                    "Television": "683d2fb03701841aad168e18",
-                    "Regional Cinema": "683d2fdd3701841aad168e1b"
+                    "Bollywood": "684a61c54b112a1955189fcc",
+                    "Hollywood": "684a61fd4b112a1955189fd5",
+                    "Television": "684a61d54b112a1955189fcf",
+                    "Regional Cinema": "684a61e54b112a1955189fd2"
                 }
             },
             "Technology": {
-                "id": "683d30043701841aad168e1e",
+                "id": "684a620b4b112a1955189fd8",
                 "subcategories": {
-                    "Gadgets": "683d30333701841aad168e21",
-                    "AI / Science": "683d30553701841aad168e24"
+                    "Gadgets": "684a62194b112a1955189fdb",
+                    "Internet": "684a62284b112a1955189fde",
+                    "AI / Science": "684a623b4b112a1955189fe1"
                 }
             },
             "Health": {
-                "id": "683d30a63701841aad168e27",
+                "id": "684a62504b112a1955189fe5",
                 "subcategories": {
-                    "Medical": "683d30ba3701841aad168e2a",
-                    "Wellness": "683d30c43701841aad168e2d"
+                    "Medical": "684a62764b112a1955189fea",
+                    "Wellness": "684a62834b112a1955189fed"
                 }
             },
             "World": {
-                "id": "683d30cd3701841aad168e30",
+                "id": "684a62924b112a1955189ff0",
                 "subcategories": {
-                    "Asia": "683d30e03701841aad168e33",
-                    "Americas": "683d310b3701841aad168e36",
-                    "Europe": "683d31193701841aad168e39",
-                    "Middle East": "683d314f3701841aad168e3c"
+                    "Asia": "684a629d4b112a1955189ff3",
+                    "Americas": "684a62ad4b112a1955189ff6",
+                    "Europe": "684a62bc4b112a1955189ff9",
+                    "Middle East": "684a62d24b112a1955189ffc"
                 }
             },
             "Lifestyle": {
-                "id": "683d31793701841aad168e3f",
+                "id": "684a62f34b112a195518a002",
                 "subcategories": {
-                    "Travel": "683d31833701841aad168e42",
-                    "Food": "683d319a3701841aad168e45",
-                    "Culture": "683d31b33701841aad168e48",
-                    "Fashion": "683d31c13701841aad168e4b"
+                    "Travel": "684a62ff4b112a195518a005",
+                    "Food": "684a63104b112a195518a008",
+                    "Culture": "684a63204b112a195518a00b",
+                    "Fashion": "684a63324b112a195518a00e"
                 }
             },
             "National": {
-                "id": "683dba8b7d9d410217e5b539",
+                "id": "684a62e04b112a1955189fff",
                 "subcategories": {}
             },
             "Miscellaneous": {
-                "id": "683d31e23701841aad168e4e",
+                "id": "684a63454b112a195518a011",
                 "subcategories": {}
             }
         }
@@ -116,6 +117,7 @@ class CategoryMapper:
             # Technology related
             "technology": "Technology",
             "gadget": "Gadgets",
+            "internet": "Internet",
             "ai": "AI / Science",
             "science": "AI / Science",
             
