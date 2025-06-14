@@ -11,7 +11,6 @@ export const errorHandler = (
   next: NextFunction
 ): Response => {
   let error = err;
-  logger.info(`Running in ${process.env.NODE_ENV} mode`);
 
   if (!(error instanceof CustomError)) {
 
@@ -26,6 +25,8 @@ export const errorHandler = (
       error?.errors || [],
       err.stack
     );
+    logger.error(error.message);
+
   }
 
   const response = {
@@ -35,7 +36,7 @@ export const errorHandler = (
     ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
   };
 
-  logger.error(response);
+ 
   return res.status(error.statusCode).json(response);
 };
 
