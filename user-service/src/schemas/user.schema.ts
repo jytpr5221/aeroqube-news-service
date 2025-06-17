@@ -150,3 +150,20 @@ export const UpdateUserSchema = z
       });
     }
   });
+
+  export const forgotPasswordSchema = z.object({
+    email:z.string({
+      required_error:"Email is required",
+      invalid_type_error:"Email must be a string"
+  })
+  .email({message:'Email is not valid'}),
+  })
+
+  export const UpdateUserPasswordSchema = z.object({
+    password:z.string({
+      required_error:"Password is required!",
+      invalid_type_error:"Password must be a string"
+  })
+  .trim()
+  .min(6,{message:"Password must be atleast 6 characters long"})
+  })

@@ -174,18 +174,32 @@ export default class UserController {
       throw new NotFoundError("User not found");
     }
 
+    if (user.isVerified) {
+      logger.info(`User already verified for email: ${decoded.email}`);
+      return res.render('verify-email', { 
+        message: 'Your email is already verified. You can now login.',
+        status: 'already-verified'
+      });
+    }
+
+    if (user.verificationExpirtyTime && new Date() > user.verificationExpirtyTime) {
+      logger.warn(`Verification token expired for email: ${decoded.email}`);
+      return res.render('verify-email', { 
+        message: 'Verification link has expired. Please request a new verification email.',
+        status: 'expired'
+      });
+    }
+
     user.isVerified = true;
     user.verificationExpirtyTime = null;
 
     await user.save();
     logger.info(`User verified successfully for email: ${decoded.email}`);
-    const userWithoutPassword = await User.findById(user._id).select(
-      "-password"
-    );
-    return new ItemCreatedResponse(
-      "User Verified Successfully",
-      userWithoutPassword
-    );
+    
+    return res.render('verify-email', { 
+      message: 'Your email has been verified successfully. You can now login.',
+      status: 'success'
+    });
   });
 
   public loginuser = asyncHandler(async (req: Request, res: Response) => {
@@ -427,6 +441,194 @@ export default class UserController {
       "User Updated Successfully",
       userWithoutPassword
     );
+  });
+
+  public forgotPassword= asyncHandler(async(req:Request, res:Response)=>{
+
+    const {email} = req.body as {email:string}
+
+    const user = await User.findOne({email:email})
+
+    if(!user) throw new NotFoundError('User not found')
+
+      const token = jwt.sign({ email: email }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      const url = `${process.env.BASE_URL}/api/v0/user/setpassword/?token=${token}`;
+      const emailBody = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Verify Your Email</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #0d1b2a; font-family: 'Segoe UI', sans-serif; color: #ffffff;">
+        <table width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center" style="padding: 20px 10px;">
+              <table width="100%" style="max-width: 440px; background-color: #1b263b; border-radius: 10px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <!-- App Name -->
+                    <div style="font-size: 20px; font-weight: 600; color: #60a5fa; margin-bottom: 6px;">
+                      Aero-News App
+                    </div>
+                    <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff;">
+                      Hey ${user.name}! 
+                    </h2>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 10px 0 20px 0;">
+                    <p style="font-size: 14px; color: #cbd5e1; margin: 0 0 14px;">
+                      Please follow this link to update your password: 
+                    </p>
+                    <a href="${url}" style="
+                      background-color: #3b82f6;
+                      color: #ffffff;
+                      text-decoration: none;
+                      padding: 10px 20px;
+                      border-radius: 6px;
+                      font-size: 14px;
+                      font-weight: 600;
+                      display: inline-block;
+                      margin-top: 5px;
+                    ">
+                      Update Password
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p style="font-size: 12px; color: #94a3b8; margin: 0;">
+                      You're receiving this email because you have an account in Aero-News App.
+                      If you're not sure why, you can ignore this email.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+  
+  `;
+      
+      user.verificationExpirtyTime = new Date(Date.now() + 15 * 60 * 1000);
+      await user.save();
+  
+      // Send verification email
+  
+      publish({
+        topic: "send-email",
+        event: UserServiceEvents.SEND_PASSWORD_RESET_EMAIL,
+        message: {
+          email: email,
+          emailBody: emailBody,
+        },
+      });
+
+
+      return new ItemCreatedResponse('Password reset email sent!',null)
+  })
+
+  public verifyAndUpdatePassword = asyncHandler(async(req:Request, res:Response)=>{
+
+    const {token} = req.query as {token:string}
+    const {password} = req.body as {password:string}
+
+    if(!token) {
+      throw new BadRequestError('Token not found')
+    }
+
+    let decoded: IVerifyUser;
+    try {
+      decoded = jwt.verify(token,process.env.JWT_SECRET) as IVerifyUser;
+    } catch (error) {
+      throw new BadRequestError('Invalid or expired token');
+    }
+
+    const existingUser = await User.findOne({email:decoded.email})
+
+    if(!existingUser) {
+      throw new NotFoundError('User not found')
+    }
+
+    // Throw error if token already used (verificationExpirtyTime is null)
+    if (existingUser.verificationExpirtyTime === null) {
+      logger.warn(`Password reset token already used for email: ${decoded.email}`);
+      throw new BadRequestError('Password reset token has already been used. Please request a new one.');
+    }
+    
+    // Throw error if token expired
+    if (existingUser.verificationExpirtyTime && new Date() > existingUser.verificationExpirtyTime) {
+      logger.warn(`Password reset token expired for email: ${decoded.email}`);
+      throw new BadRequestError('Password reset token has expired. Please request a new one.');
+    }
+    
+    // Successful password update
+    const updatedPassword = await bcrypt.hash(password,10)
+
+    existingUser.password=updatedPassword
+    existingUser.verificationExpirtyTime = null; // Invalidate the token after use
+
+    await existingUser.save()
+    logger.info(`Password updated successfully for email: ${decoded.email}`);
+    
+    return new ItemUpdatedResponse('Password updated successfully!', { message: 'Password updated successfully! You can now log in.', status: 'success'});
+  })
+
+  public renderSetPasswordPage = asyncHandler(async (req: Request, res: Response) => {
+    const { token } = req.query as { token: string };
+    if (!token) {
+      return res.render('set-password', { 
+        token: '',
+        status: 'error',
+        message: 'Invalid or missing token.'
+      });
+    }
+
+    let decoded: IVerifyUser;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET) as IVerifyUser;
+    } catch (error) {
+      return res.render('set-password', {
+        token: '',
+        status: 'error',
+        message: 'Invalid or expired password reset link.'
+      });
+    }
+
+    const existingUser = await User.findOne({ email: decoded.email });
+
+    if (!existingUser) {
+      return res.render('set-password', {
+        token: '',
+        status: 'error',
+        message: 'User not found for this password reset link.'
+      });
+    }
+
+    if (existingUser.verificationExpirtyTime === null) {
+      return res.render('set-password', {
+        token: '',
+        status: 'already-used',
+        message: 'This password reset token has already been used. Please request a new one.'
+      });
+    }
+    
+    if (existingUser.verificationExpirtyTime && new Date() > existingUser.verificationExpirtyTime) {
+      return res.render('set-password', {
+        token: '',
+        status: 'expired',
+        message: 'This password reset token has expired. Please request a new one.'
+      });
+    }
+
+    // If all checks pass, render the form normally
+    res.render('set-password', { token, status: '', message: '' });
   });
 
   public deleteMe = asyncHandler(async (req: Request, res: Response) => {
@@ -925,4 +1127,6 @@ export default class UserController {
       return new ItemDeletedResponse("User Session Deleted Successfully");
     }
   );
+
+  
 }

@@ -225,6 +225,7 @@ export const publish = async (data:IProduceMessage): Promise<boolean> => {
       },
     ],
   });
+  logger.info('Message published on kafka topic', data.topic);
   return result.length > 0;
 };
 

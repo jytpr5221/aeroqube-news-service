@@ -1,8 +1,9 @@
 import { ValidationSource,validateRequest } from '@root/helpers/zodvalidators';
-import { GetUserByIdSchema, GetUserByQuerySchema, LoginUserSchema, RegisterUserSchmea, UpdateUserSchema, verifyUserSchema, GetUserByRoleSchema } from '@root/schemas/user.schema';
+import { GetUserByIdSchema, GetUserByQuerySchema, LoginUserSchema, RegisterUserSchmea, UpdateUserSchema, verifyUserSchema, GetUserByRoleSchema, forgotPasswordSchema, UpdateUserPasswordSchema } from '@root/schemas/user.schema';
 import { Router} from 'express';
 import UserController from '@controllers/user.controller';
 import { authenticateToken } from '@middlewares/auth'
+import { Request, Response } from 'express';
 
 class UserRouter {
 
@@ -33,7 +34,9 @@ class UserRouter {
        this.router.get('/sessions', authenticateToken, userController.getAllSessions);
        this.router.delete('/sessions/:sessionId', authenticateToken, userController.deleteUserSession);
        this.router.put('/change-role/:userId', authenticateToken, validateRequest(GetUserByIdSchema, ValidationSource.PARAMS), userController.changeUserRole);
-
+       this.router.post('/forgot-password',validateRequest(forgotPasswordSchema,ValidationSource.BODY),userController.forgotPassword)
+       this.router.put('/setpassword',validateRequest(UpdateUserPasswordSchema,ValidationSource.BODY),userController.verifyAndUpdatePassword)
+       this.router.get('/setpassword', userController.renderSetPasswordPage)
        return this.router;
     }
 }
