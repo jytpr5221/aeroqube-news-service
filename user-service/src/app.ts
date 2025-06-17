@@ -6,14 +6,7 @@ import { errorHandler } from "@middlewares/ErrorHandler";
 import ApplicationRouter from "@routes/application.route";
 import path from 'path';
 
-const gateway = 'http://localhost:5000';
-
-app.use(cors(
-  {
-    origin: gateway,
-    credentials: true,
-  }
-))
+app.use(cors())
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
