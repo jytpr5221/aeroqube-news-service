@@ -34,8 +34,8 @@ async def run_extraction_and_processing():
         last_run_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
         next_scheduled_run = (current_time + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
         
-        logger.info(f"Starting extraction and processing cycle at {last_run_time}")
-        logger.info(f"Next run scheduled for {next_scheduled_run}")
+        logger.info(f"Starting extraction and processing cycle at {last_run_time} ")
+        logger.info(f"Next run scheduled for {next_scheduled_run} ")
         
         # First run the link extractor
         logger.info("Starting link extraction...")
@@ -80,9 +80,15 @@ def get_status():
     elif last_run_time is None:
         status["message"] = "No extraction has been run yet"
     elif last_run_status:
-        status["message"] = f"Last extraction completed successfully at {last_run_time}. Next run scheduled for {next_scheduled_run}"
+        # Convert to IST for display only
+        last_run_dt = datetime.strptime(last_run_time, "%Y-%m-%d %H:%M:%S") + timedelta(hours=5, minutes=30)
+        next_run_dt = datetime.strptime(next_scheduled_run, "%Y-%m-%d %H:%M:%S") + timedelta(hours=5, minutes=30)
+        status["message"] = f"Last extraction completed successfully at {last_run_dt.strftime('%Y-%m-%d %H:%M:%S')}. Next run scheduled for {next_run_dt.strftime('%Y-%m-%d %H:%M:%S')}"
     else:
-        status["message"] = f"Last extraction failed at {last_run_time}. Next run scheduled for {next_scheduled_run}"
+        # Convert to IST for display only
+        last_run_dt = datetime.strptime(last_run_time, "%Y-%m-%d %H:%M:%S") + timedelta(hours=5, minutes=30)
+        next_run_dt = datetime.strptime(next_scheduled_run, "%Y-%m-%d %H:%M:%S") + timedelta(hours=5, minutes=30)
+        status["message"] = f"Last extraction failed at {last_run_dt.strftime('%Y-%m-%d %H:%M:%S')}. Next run scheduled for {next_run_dt.strftime('%Y-%m-%d %H:%M:%S')}"
     
     return status
 
