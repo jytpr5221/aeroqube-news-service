@@ -131,6 +131,16 @@ export const UpdateUserSchema = z
         message: "Contact number must be 10 digits",
       })
       .optional(),
+
+    interest: z
+      .array(z.string())
+      .refine(
+        (val) => val.every((id) => /^[0-9a-fA-F]{24}$/.test(id)),
+        {
+          message: "Each interest ID must be a valid MongoDB ObjectId",
+        }
+      )
+      .optional(),
   })
   .superRefine((data, ctx) => {
     const { name, email, newpassword, currentpassword, contact } = data;
