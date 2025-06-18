@@ -346,12 +346,17 @@ export async function configureKafka() {
           { new: true }
         );
         logger.info("Service generated news updated");
-        await redisService.del(`category-news/${response.category}`);
-        await redisService.del('latest-news');
-        await redisService.del('all-news');
-        await redisService.del(`news/reporter/${response.reportedBy}`)
-        await redisService.del(`news/source/${response.source}`);
-        
+
+        const categoryKeys = await redisService.keys(`category-news/${response.category}:*`);
+        for (const key of categoryKeys) await redisService.del(key);
+        const latestNewsKeys = await redisService.keys('latest-news:*');
+        for (const key of latestNewsKeys) await redisService.del(key);
+        const allNewsKeys = await redisService.keys('all-news:*');
+        for (const key of allNewsKeys) await redisService.del(key);
+        const reporterKeys = await redisService.keys(`news/reporter/${response.reportedBy}:*`);
+        for (const key of reporterKeys) await redisService.del(key);
+        const sourceKeys = await redisService.keys(`news/source/${response.source}:*`);
+        for (const key of sourceKeys) await redisService.del(key);
       } catch (err) {
         logger.error("Something went wrong while publishing News", err.message);
       }

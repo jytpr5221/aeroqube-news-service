@@ -9,8 +9,10 @@ import { Request, Response } from "express";
 import { uploadAttachmentToS3 } from "@utils/s3uploader";
 import fs from "fs/promises";
 import path from "path";
-import { Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import logger from "@utils/logger";
+import { PaginatedResponse } from "@utils/paginateddata";
+import { Category } from "@models/category.model";
 
 export default class NewsController {
   public uploadNews = asyncHandler(async (req: Request, res: Response) => {
@@ -196,16 +198,20 @@ export default class NewsController {
     }
 
     const { status } = req.query as {status:string};
+    const {limit='50', offset='1'} = req.query as unknown as {limit:string, offset:string};
 
-    let newsList:INews[] | null
+    let limitNumber = parseInt(limit);
+    const offsetNumber = parseInt(offset);
 
-    if(status)  newsList = await News.find({status:status}).populate('category').sort({createdAt:-1});
-    else newsList = await News.find({}).populate('category').sort({createdAt:-1});
+    if(limitNumber > 100) limitNumber=100
+
+    const  newsList = await News.find({status:status}).skip(offsetNumber).limit(limitNumber).populate('category').sort({createdAt:-1});
 
     if(!newsList)
         throw new NotFoundError("News not found");
-
-    return new ItemFetchedResponse('News fetched successfully',newsList)
+    const paginatedResponse= new PaginatedResponse(newsList, await News.countDocuments({status:status}), limitNumber, offsetNumber);
+    
+    return new ItemFetchedResponse('News fetched successfully',paginatedResponse)
   })
 
   public deleteNews = asyncHandler(async (req: Request, res: Response) => {
@@ -238,8 +244,14 @@ export default class NewsController {
     if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
         throw new ForbiddenError("You are not allowed to get all news");
     }
+    const {limit='50', offset='1'} = req.query as unknown as {limit:string, offset:string};
 
-    const newsList = await News.find({}).populate('category').sort({createdAt:-1});
+    let limitNumber = parseInt(limit);
+    const offsetNumber = parseInt(offset);
+
+    if(limitNumber > 100) limitNumber=100
+
+    const newsList = await News.find({}).skip(offsetNumber-1).limit(limitNumber).populate('category').sort({createdAt:-1});
 
     if(!newsList){
       logger.error("Something went wrong while fetching all news");
@@ -249,7 +261,10 @@ export default class NewsController {
     if(newsList.length === 0)
         throw new NotFoundError("No news found");
 
-    return new ItemFetchedResponse('All news fetched successfully',newsList)
+    const totalCounts = await News.countDocuments({});
+    const paginatedResponse = new PaginatedResponse(newsList, totalCounts, limitNumber, offsetNumber);
+
+    return new ItemFetchedResponse('All news fetched successfully',paginatedResponse)
   }
   )
 
@@ -271,103 +286,103 @@ export default class NewsController {
   )
 
   public getNewsByReporter = asyncHandler(async (req: Request, res: Response) => {
-    // if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
-    //     throw new ForbiddenError("You are not allowed to get news by reporter");
-    // }
+    const { reporterId } = req.params as unknown as IGetNewsReporter;
+    const { limit = '50', offset = '1' } = req.query as unknown as { limit: string, offset: string };
 
-    const {reporterId} = req.params as unknown as IGetNewsReporter
+    let limitNumber = parseInt(limit);
+    const offsetNumber = parseInt(offset);
+    if (limitNumber > 100) limitNumber = 100;
 
-    const newsList = await News.find({reporterBy:reporterId}).populate('category').sort({createdAt:-1});
+    const newsList = await News.find({ reporterBy: reporterId })
+      .skip(offsetNumber - 1)
+      .limit(limitNumber)
+      .populate('category')
+      .sort({ createdAt: -1 });
 
-    if(!newsList){
+    if (!newsList) {
       logger.error(`No news found for reporterId: ${reporterId}`);
       throw new ServerError("Something went wrong while fetching news by reporter id");
     }
 
-    if(newsList.length === 0)
-        throw new NotFoundError("No news found for this reporter");
-        
+    if (newsList.length === 0)
+      throw new NotFoundError("No news found for this reporter");
 
-    return new ItemFetchedResponse('News fetched successfully',newsList)
-  }
-  )
+    const totalCounts = await News.countDocuments({ reporterBy: reporterId });
+    const paginatedResponse = new PaginatedResponse(newsList, totalCounts, limitNumber, offsetNumber);
+
+    return new ItemFetchedResponse('News fetched successfully', paginatedResponse);
+  })
 
   public getNewsByCategory = asyncHandler(async (req: Request, res: Response) => {
-    if(req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN){
-        throw new ForbiddenError("You are not allowed to get news by category");
+    if (req.user.role !== UserType.ADMIN && req.user.role !== UserType.SUPERADMIN) {
+      throw new ForbiddenError("You are not allowed to get news by category");
     }
 
-    const {categoryId} = req.params as unknown as {categoryId:string}
+    const { categoryId } = req.params as unknown as { categoryId: string };
+    const { limit = '50', offset = '1' } = req.query as unknown as { limit: string, offset: string };
 
-    const newsList = await News.aggregate([
-      
-        {
-          $match: {
-            _id: new Schema.Types.ObjectId(categoryId)
-          }
-        },
-        {
-          $graphLookup: {
-            from: 'categories',
-            startWith: '$_id',
-            connectFromField: '_id',
-            connectToField: 'parent',
-            as: 'children'
-          }
-        },
-        {
-          $project: {
-            selfId: '$_id',
-            childrenIds: {
-              $map: {
-                input: '$children',
-                as: 'child',
-                in: '$$child._id'
-              }
+    let limitNumber = parseInt(limit);
+    const offsetNumber = parseInt(offset);
+    if (limitNumber > 100) limitNumber = 100;
+
+    const categoryAgg = await Category.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(categoryId)
+        }
+      },
+      {
+        $graphLookup: {
+          from: 'categories',
+          startWith: '$_id',
+          connectFromField: '_id',
+          connectToField: 'parent',
+          as: 'children'
+        }
+      },
+      {
+        $project: {
+          selfId: '$_id',
+          childrenIds: {
+            $map: {
+              input: '$children',
+              as: 'child',
+              in: '$$child._id'
             }
-          }
-        },
-        {
-          $addFields: {
-            allCategoryIds: {
-              $setUnion: [['$selfId'], '$childrenIds']
-            }
-          }
-        },
-        {
-          $lookup: {
-            from: 'news',
-            let: { categoryIds: '$allCategoryIds' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $in: ['$category', '$$categoryIds']
-                  }
-                }
-              }
-            ],
-            as: 'news'
-          }
-        },
-        {
-          $project: {
-            news: 1,
-            _id: 0
           }
         }
-      ])   
+      },
+      {
+        $addFields: {
+          allCategoryIds: {
+            $setUnion: [['$selfId'], '$childrenIds']
+          }
+        }
+      }
+    ]);
+    
 
-    if(!newsList){
-      logger.error(`No news found for categoryId: ${categoryId}`);
-      throw new ServerError("Something went wrong while fetching news by category id");
+    if (!categoryAgg || categoryAgg.length === 0) {
+      logger.error(`No categories found for categoryId: ${categoryId}`);
+      throw new NotFoundError("No categories found for this categoryId");
     }
 
-    if(newsList.length === 0 || newsList[0].news.length === 0)
-        throw new NotFoundError("No news found for this category");
-        
+    const allCategoryIds = categoryAgg[0].allCategoryIds;
 
-    return new ItemFetchedResponse('News fetched successfully',newsList)
-  }
-  )
+    const totalCounts = await News.countDocuments({ category: { $in: allCategoryIds } });
+
+    const newsList = await News.find({ category: { $in: allCategoryIds } })
+      .skip(offsetNumber - 1)
+      .limit(limitNumber)
+      .populate('category')
+      .sort({ createdAt: -1 });
+
+    if (!newsList || newsList.length === 0) {
+      logger.error(`No news found for categoryId: ${categoryId}`);
+      throw new NotFoundError("No news found for this category");
+    }
+
+    const paginatedResponse = new PaginatedResponse(newsList, totalCounts, limitNumber, offsetNumber);
+    return new ItemFetchedResponse('News fetched successfully', paginatedResponse);
+  })
 }

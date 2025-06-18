@@ -3,8 +3,8 @@ import { ViewerController } from "@controllers/viewer.controller";
 import { validateRequest } from "@root/helpers/zodvalidators";
 import { ValidationSource } from "@root/helpers/zodvalidators";
 import {  getCategoryNewsSchema, getNewsByIdSchema, getNewsByReporterSchema, getNewsBySearchSchema, getNewsBySourceSchema, getNewsByTagSchema } from "@root/schemas/viewer.schema";
+import { PaginationSchema } from "@root/schemas/pagination.schema";
 import { authMiddleware } from "@middlewares/auth";
-
 
 const router = Router();
 const viewerController = new ViewerController();
@@ -12,6 +12,7 @@ const viewerController = new ViewerController();
 // Get all news with pagination
 router.get(
   "/all",
+  validateRequest(PaginationSchema, ValidationSource.QUERY),
   viewerController.getAllNews
 );
 
@@ -23,10 +24,19 @@ router.get(
 );
 
 // Get user feed
-router.get("/feed", authMiddleware, viewerController.getUserFeed);
+router.get(
+  "/feed",
+  authMiddleware,
+  validateRequest(PaginationSchema, ValidationSource.QUERY),
+  viewerController.getUserFeed
+);
 
 // Get latest news (last 2 days)
-router.get("/latest", viewerController.getLatestNews);
+router.get(
+  "/latest",
+  validateRequest(PaginationSchema, ValidationSource.QUERY),
+  viewerController.getLatestNews
+);
 
 // Search news
 router.get(

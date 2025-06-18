@@ -59,7 +59,7 @@ export const VerifyNewsSchema = z.object({
 
 // Schema for getting news by status
 export const GetNewsByStatusSchema = z.object({
-  status: z.nativeEnum(NewsStatus).optional()
+  status: z.nativeEnum(NewsStatus)
 });
 
 // Schema for deleting news
@@ -98,15 +98,6 @@ export const GetNewsByCategorySchema = z.object({
   .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid category ID format" })
 });
 
-// Schema for generating AI service
-export const GenerateAIServiceSchema = z.object({
-  newsId: z.string({
-    required_error: "News ID is required",
-    invalid_type_error: "News ID must be a string"
-  })
-  .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid news ID format" })
-});
-
 // Schema for publishing news
 export const PublishNewsSchema = z.object({
   newsId: z.string({
@@ -115,3 +106,4 @@ export const PublishNewsSchema = z.object({
   })
   .regex(/^[0-9a-fA-F]{24}$/, { message: "Invalid news ID format" })
 });
+

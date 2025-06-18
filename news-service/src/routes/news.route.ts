@@ -1,10 +1,11 @@
 import { ValidationSource, validateRequest } from '@root/helpers/zodvalidators';
-import { DeleteNewsSchema, EditNewsSchema, GenerateAIServiceSchema, GetNewsByCategorySchema, GetNewsByIdSchema, GetNewsByReporterSchema, GetNewsByStatusSchema, PublishNewsSchema, UploadNewsSchema, VerifyNewsSchema } from '@root/schemas/news.schema';
+import { DeleteNewsSchema, EditNewsSchema, GetNewsByCategorySchema, GetNewsByIdSchema, GetNewsByReporterSchema, GetNewsByStatusSchema, PublishNewsSchema, UploadNewsSchema, VerifyNewsSchema } from '@root/schemas/news.schema';
 import { Request, Response, Router } from 'express';
 import NewsController from '@controllers/news.controller';
 import { authMiddleware } from '@middlewares/auth';
 import { SUCCESS_CODES } from '@constants/statuscodes';
 import { upload } from '@middlewares/multer';
+import { PaginationSchema } from '@root/schemas/pagination.schema';
 
 class NewsRouter {
     private readonly router: Router;
@@ -52,6 +53,7 @@ class NewsRouter {
             '/by-status',
             authMiddleware,
             validateRequest(GetNewsByStatusSchema, ValidationSource.QUERY),
+            validateRequest(PaginationSchema, ValidationSource.QUERY),
             newsController.getNewsByStatus
         );
 
@@ -67,6 +69,7 @@ class NewsRouter {
         this.router.get(
             '/all',
             authMiddleware,
+            validateRequest(PaginationSchema, ValidationSource.QUERY),
             newsController.getAllNews
         );
 
@@ -74,6 +77,7 @@ class NewsRouter {
         this.router.get(
             '/:newsId',
             authMiddleware,
+            validateRequest(GetNewsByIdSchema, ValidationSource.PARAMS),
             newsController.getNewsById
         );
 
@@ -81,6 +85,8 @@ class NewsRouter {
         this.router.get(
             '/reporter/:reporterId',
             authMiddleware,
+            validateRequest(GetNewsByReporterSchema, ValidationSource.PARAMS),
+            validateRequest(PaginationSchema, ValidationSource.QUERY),
             newsController.getNewsByReporter
         );
 
@@ -88,6 +94,8 @@ class NewsRouter {
         this.router.get(
             '/category/:categoryId',
             authMiddleware,
+            validateRequest(GetNewsByCategorySchema, ValidationSource.PARAMS),
+            validateRequest(PaginationSchema, ValidationSource.QUERY),
             newsController.getNewsByCategory
         );
 

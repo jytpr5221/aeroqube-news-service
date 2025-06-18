@@ -39,6 +39,10 @@ export default class RedisService{
     public async del(key:string){
         await this.redis.del(key);
     }
+
+    public async keys(pattern: string): Promise<string[]> {
+        return await this.redis.keys(pattern);
+    }
 }
 
 export const redisService = new RedisService();
