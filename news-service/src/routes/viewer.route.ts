@@ -3,6 +3,7 @@ import { ViewerController } from "@controllers/viewer.controller";
 import { validateRequest } from "@root/helpers/zodvalidators";
 import { ValidationSource } from "@root/helpers/zodvalidators";
 import {  getCategoryNewsSchema, getNewsByIdSchema, getNewsByReporterSchema, getNewsBySearchSchema, getNewsBySourceSchema, getNewsByTagSchema } from "@root/schemas/viewer.schema";
+import { authMiddleware } from "@middlewares/auth";
 
 
 const router = Router();
@@ -22,7 +23,7 @@ router.get(
 );
 
 // Get user feed
-router.get("/feed", viewerController.getUserFeed);
+router.get("/feed", authMiddleware, viewerController.getUserFeed);
 
 // Get latest news (last 2 days)
 router.get("/latest", viewerController.getLatestNews);
