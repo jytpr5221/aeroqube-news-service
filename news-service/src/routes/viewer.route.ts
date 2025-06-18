@@ -28,6 +28,13 @@ router.get("/feed", authMiddleware, viewerController.getUserFeed);
 // Get latest news (last 2 days)
 router.get("/latest", viewerController.getLatestNews);
 
+// Search news
+router.get(
+  "/search",
+  validateRequest(getNewsBySearchSchema, ValidationSource.QUERY),
+  viewerController.getNewsBySearch
+);
+
 // Get news by ID
 router.get(
   "/:newsId",
@@ -40,13 +47,6 @@ router.get(
   "/tag/:tag",
   validateRequest(getNewsByTagSchema, ValidationSource.PARAMS),
   viewerController.getNewsByTag
-);
-
-// Search news
-router.get(
-  "/search",
-  validateRequest(getNewsBySearchSchema, ValidationSource.QUERY),
-  viewerController.getNewsBySearch
 );
 
 // Get news by reporter

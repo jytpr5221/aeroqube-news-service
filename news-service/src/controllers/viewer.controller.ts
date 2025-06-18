@@ -271,47 +271,70 @@ export class ViewerController {
 
   public getNewsBySearch = asyncHandler(async (req: Request, res: Response) => {
     const { q } = req.query;
-
+  
     if (!q || typeof q !== "string") {
       throw new BadRequestError("Search query is required");
     }
-
-    
+  
     const cacheKey = `news/search:${q}`;
     const cachedNews = await redisService.get(cacheKey);
-
+  
     if (cachedNews) {
-      logger.info('News by search fetched from cache');
+      logger.info("News by search fetched from cache");
       return new ItemFetchedResponse(
         "News by search fetched successfully",
         JSON.parse(cachedNews)
       );
     }
-
-    const newsBySearch = await News.find({
-      $text: { $search: q },
-      status: NewsStatus.PUBLISHED,
-    }).sort({ createdAt: -1 })
- 
-
-    if (!newsBySearch ) {
+  
+    const newsBySearch = await News.aggregate([
+      {
+        $search: {
+          index: "default",
+          text: {
+            query: q,
+            path: ["title", "content"],
+            fuzzy: {
+              maxEdits: 2,
+              prefixLength: 1,
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          status: NewsStatus.PUBLISHED,
+        },
+      },
+      {
+        $sort: {
+          score: { $meta: "textScore" },
+        },
+      },
+      {
+        $limit: 20,
+      },
+    ]);
+  
+    if (!newsBySearch) {
       logger.error("No news found for this search query");
       throw new ServerError("No news found for this search query");
     }
-
-    if(newsBySearch.length === 0){
+  
+    if (newsBySearch.length === 0) {
       logger.warn("No news found for this search query");
       throw new NotFoundError("No news found for this search query");
     }
-
+  
     await redisService.set(cacheKey, JSON.stringify(newsBySearch), 60 * 30); // 30 minutes
-    logger.info('News by search fetched from DB');
+    logger.info("News by search fetched from DB");
+  
     return new ItemFetchedResponse(
       "News by search fetched successfully",
       newsBySearch
     );
   });
-
+  
   public getNewsByReporter = asyncHandler(async (req: Request, res: Response) => {
       const { reporterId } = req.params;
 
