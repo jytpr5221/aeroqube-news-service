@@ -15,6 +15,7 @@ class CategoryRouter {
     public routes(): Router {
         const categoryController = new CategoryController();
 
+        // Health Check
         this.router.get('/', (req: Request, res: Response) => {
             console.log('Category Service is running');
             res.status(SUCCESS_CODES.OK).json({
@@ -22,7 +23,7 @@ class CategoryRouter {
             });
         });
 
-        // Create new category route
+        // Create a new category
         this.router.post(
             '/create',
             authMiddleware,
@@ -30,29 +31,21 @@ class CategoryRouter {
             categoryController.createNewCategory
         );
 
-        // Update category route
-        this.router.put(
-            '/:categoryId',
-            authMiddleware,
-            validateRequest(UpdateCategorySchema, ValidationSource.BODY),
-            categoryController.updateCategory
-        );
-
-        this.router.get(
-            '/parent-categories',
-            authMiddleware,
-            categoryController.getParentCategories
-        ); 
-             
-        
-        // Get all categories route
+        // Get all categories
         this.router.get(
             '/all',
             authMiddleware,
             categoryController.getCategories
         );
 
-        // Get category by ID route
+        // Get only parent categories
+        this.router.get(
+            '/parent-categories',
+            authMiddleware,
+            categoryController.getParentCategories
+        );
+
+        // Get category by ID
         this.router.get(
             '/:categoryId',
             authMiddleware,
@@ -60,7 +53,15 @@ class CategoryRouter {
             categoryController.getCategoryById
         );
 
+        // Update category
+        this.router.put(
+            '/:categoryId',
+            authMiddleware,
+            validateRequest(UpdateCategorySchema, ValidationSource.BODY),
+            categoryController.updateCategory
+        );
 
+        // Delete category
         this.router.delete(
             '/:categoryId',
             authMiddleware,
@@ -68,10 +69,10 @@ class CategoryRouter {
             categoryController.deleteCategory
         );
 
-
         return this.router;
     }
 }
+
 
 const categoryRouter = new CategoryRouter();
 export default categoryRouter.routes();

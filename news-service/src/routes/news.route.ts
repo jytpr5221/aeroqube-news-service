@@ -17,6 +17,7 @@ class NewsRouter {
     public routes(): Router {
         const newsController = new NewsController();
 
+        // Health Check
         this.router.get('/', (req: Request, res: Response) => {
             console.log('News Service is running');
             res.status(SUCCESS_CODES.OK).json({
@@ -24,31 +25,24 @@ class NewsRouter {
             });
         });
 
+        // Upload news
         this.router.post(
             '/upload',
             authMiddleware,
-            upload.array('images', 5), // Allow up to 5 images
+            upload.array('images', 5),
             validateRequest(UploadNewsSchema, ValidationSource.BODY),
             newsController.uploadNews
         );
 
-        this.router.put(
-            '/edit/:id',
+        // Get all news
+        this.router.get(
+            '/all',
             authMiddleware,
-            upload.array('images', 5), // Allow up to 5 images
-            validateRequest(EditNewsSchema, ValidationSource.BODY),
-            newsController.editNews
+            validateRequest(PaginationSchema, ValidationSource.QUERY),
+            newsController.getAllNews
         );
 
-        // News verification route - requires authentication and validation
-        this.router.put(
-            '/verify/:id',
-            authMiddleware,
-            validateRequest(VerifyNewsSchema, ValidationSource.BODY),
-            newsController.verifyNews
-        );
-
-        // Get news by status route - requires authentication and validation
+        // Get news by status
         this.router.get(
             '/by-status',
             authMiddleware,
@@ -57,23 +51,7 @@ class NewsRouter {
             newsController.getNewsByStatus
         );
 
-        // Delete news route - requires authentication and validation
-        this.router.delete(
-            '/:newsId',
-            authMiddleware,
-            validateRequest(DeleteNewsSchema, ValidationSource.PARAMS),
-            newsController.deleteNews
-        );
-
-        // Get all news route - requires authentication
-        this.router.get(
-            '/all',
-            authMiddleware,
-            validateRequest(PaginationSchema, ValidationSource.QUERY),
-            newsController.getAllNews
-        );
-
-        // Get news by ID route - requires authentication
+        // Get news by ID
         this.router.get(
             '/:newsId',
             authMiddleware,
@@ -81,7 +59,7 @@ class NewsRouter {
             newsController.getNewsById
         );
 
-        // Get news by reporter route - requires authentication
+        // Get news by reporter
         this.router.get(
             '/reporter/:reporterId',
             authMiddleware,
@@ -90,7 +68,7 @@ class NewsRouter {
             newsController.getNewsByReporter
         );
 
-        // Get news by category route - requires authentication
+        // Get news by category
         this.router.get(
             '/category/:categoryId',
             authMiddleware,
@@ -99,9 +77,35 @@ class NewsRouter {
             newsController.getNewsByCategory
         );
 
+        // Edit news
+        this.router.put(
+            '/edit/:id',
+            authMiddleware,
+            upload.array('images', 5),
+            validateRequest(EditNewsSchema, ValidationSource.BODY),
+            newsController.editNews
+        );
+
+        // Verify news
+        this.router.put(
+            '/verify/:id',
+            authMiddleware,
+            validateRequest(VerifyNewsSchema, ValidationSource.BODY),
+            newsController.verifyNews
+        );
+
+        // Delete news
+        this.router.delete(
+            '/:newsId',
+            authMiddleware,
+            validateRequest(DeleteNewsSchema, ValidationSource.PARAMS),
+            newsController.deleteNews
+        );
+
         return this.router;
     }
 }
+
 
 const newsRouter = new NewsRouter();
 export default newsRouter.routes();

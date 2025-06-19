@@ -1,12 +1,12 @@
 import { SUCCESS } from '@constants/success';
 import { ValidationSource, validateRequest } from '@root/helpers/zodvalidators';
-import { 
-    ApplicationIdSchema, 
-    CreateApplicationSchema, 
-    GetApplicationByStatusSchema, 
-    GetApplicationByUserSchema, 
-    UpdateApplicationSchema, 
-    VerifyApplicationSchema 
+import {
+    ApplicationIdSchema,
+    CreateApplicationSchema,
+    GetApplicationByStatusSchema,
+    GetApplicationByUserSchema,
+    UpdateApplicationSchema,
+    VerifyApplicationSchema,
 } from '@root/schemas/application.schema';
 import { Request, Response, Router } from 'express';
 import ApplicationController from '@controllers/application.controller';
@@ -17,12 +17,13 @@ class ApplicationRouter {
     private readonly router: Router;
 
     constructor() {
-        this.router = Router()
+        this.router = Router();
     }
 
     public routes(): Router {
         const applicationController = new ApplicationController();
 
+        // Health check / base route
         this.router.get('/', (req: Request, res: Response) => {
             res.status(SUCCESS.GET_200.statusCode).json({
                 message: SUCCESS.GET_200.message,
@@ -33,49 +34,24 @@ class ApplicationRouter {
         this.router.post(
             '/create',
             authenticateToken,
-            upload.array('documents',5),
+            upload.array('documents', 5),
             validateRequest(CreateApplicationSchema, ValidationSource.BODY),
             applicationController.createApplication
         );
 
-        // Update application
-        this.router.put(
-            '/update/:applicationId',
-            authenticateToken,
-            upload.array('documents',5),
-            validateRequest(ApplicationIdSchema, ValidationSource.PARAMS),
-            validateRequest(UpdateApplicationSchema, ValidationSource.BODY),
-            applicationController.updateApplication
-        );
-
-        // Get all applications (admin only)
-        this.router.get(
-            '/all',
-            authenticateToken,
-            applicationController.getAllApplications
-        );
-
-
-        // Get single application
-        this.router.get(
-            '/:applicationId',
-            authenticateToken,
-            validateRequest(ApplicationIdSchema, ValidationSource.PARAMS),
-            applicationController.getApplication
-        );
-
-        // Get user's applications
+        // Get my applications
         this.router.get(
             '/my-applications',
             authenticateToken,
             applicationController.getMyApplications
         );
 
-        // Get pending applications (admin only)
+        // Get application by ID
         this.router.get(
-            '/pending',
+            '/:applicationId',
             authenticateToken,
-            applicationController.getPendingApplications
+            validateRequest(ApplicationIdSchema, ValidationSource.PARAMS),
+            applicationController.getApplication
         );
 
         // Get applications by username (admin only)
@@ -94,7 +70,30 @@ class ApplicationRouter {
             applicationController.getApplicationByQueryStatus
         );
 
-        
+        // Get pending applications (admin only)
+        this.router.get(
+            '/pending',
+            authenticateToken,
+            applicationController.getPendingApplications
+        );
+
+        // Get all applications (admin only)
+        this.router.get(
+            '/all',
+            authenticateToken,
+            applicationController.getAllApplications
+        );
+
+        // Update application
+        this.router.put(
+            '/update/:applicationId',
+            authenticateToken,
+            upload.array('documents', 5),
+            validateRequest(ApplicationIdSchema, ValidationSource.PARAMS),
+            validateRequest(UpdateApplicationSchema, ValidationSource.BODY),
+            applicationController.updateApplication
+        );
+
         // Verify application (admin only)
         this.router.put(
             '/verify/:applicationId',
