@@ -293,7 +293,7 @@ export default class NewsController {
     const offsetNumber = parseInt(offset);
     if (limitNumber > 100) limitNumber = 100;
 
-    const newsList = await News.find({ reporterBy: reporterId })
+    const newsList = await News.find({ reportedBy: reporterId })
       .skip(offsetNumber - 1)
       .limit(limitNumber)
       .populate('category')
