@@ -34,7 +34,6 @@ export const sendEmail = async(email:string,body:string)=>{
     } catch (error) {
 
         console.error(error)
-        throw error
     }
     
 }

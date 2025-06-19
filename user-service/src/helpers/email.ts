@@ -1,7 +1,4 @@
-import { User } from "@models/user.model";
-import { BadRequestError, ServerError } from "@utils/ApiError";
 import nodemailer from "nodemailer";
-import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import logger from '@utils/logger';
 
@@ -38,7 +35,6 @@ export const sendEmail = async(email:string,body:string)=>{
     } catch (error) {
 
         logger.error(`Error sending email: ${error}`);
-        throw error
     }
     
 }
