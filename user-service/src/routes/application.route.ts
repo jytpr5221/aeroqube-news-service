@@ -39,21 +39,6 @@ class ApplicationRouter {
             applicationController.createApplication
         );
 
-        // Get my applications
-        this.router.get(
-            '/my-applications',
-            authenticateToken,
-            applicationController.getMyApplications
-        );
-
-        // Get application by ID
-        this.router.get(
-            '/:applicationId',
-            authenticateToken,
-            validateRequest(ApplicationIdSchema, ValidationSource.PARAMS),
-            applicationController.getApplication
-        );
-
         // Get applications by username (admin only)
         this.router.get(
             '/by-username',
@@ -82,6 +67,21 @@ class ApplicationRouter {
             '/all',
             authenticateToken,
             applicationController.getAllApplications
+        );
+
+        // Get my applications
+        this.router.get(
+            '/my-applications',
+            authenticateToken,
+            applicationController.getMyApplications
+        );
+
+        // Get application by ID
+        this.router.get(
+            '/:applicationId',
+            authenticateToken,
+            validateRequest(ApplicationIdSchema, ValidationSource.PARAMS),
+            applicationController.getApplication
         );
 
         // Update application

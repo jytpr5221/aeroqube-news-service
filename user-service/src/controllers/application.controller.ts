@@ -293,7 +293,7 @@ export default class ApplicationController {
   });
 
   public getMyApplications = asyncHandler(async (req: Request, res: Response) => {
-      const userId = req.user._id;
+      const userId = req.user.id;
       logger.info(`My applications fetch attempt for userId: ${userId}`);
       const applications = await Application.find({
         reporterId: userId,
