@@ -8,6 +8,7 @@ export interface IUserSession {
   platform: string;
   ip: string;
   createdOn: Date;
+  token:string;
 }
 
 const UserSessionsSchema = new Schema<IUserSession>({
@@ -18,6 +19,7 @@ const UserSessionsSchema = new Schema<IUserSession>({
   platform: { type: String },
   ip: { type: String, required: true },
   createdOn: { type: Date, default: Date.now },
+  token:{type: String, required: true} 
 });
 // we can add FCM token from client if user allows notification
 

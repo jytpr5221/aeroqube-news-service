@@ -1,5 +1,5 @@
-import { IUser, User, UserType } from "@models/user.model";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import { User, UserType } from "@models/user.model";
+import jwt from "jsonwebtoken";
 import { asyncHandler } from "@utils/AsyncHandler";
 import { Request, Response } from "express";
 import {
@@ -248,6 +248,7 @@ export default class UserController {
         $set: {
           loginTime: new Date(),
           isLoggedIn: true,
+          token:token
         },
       },
       { upsert: true, new: true }
@@ -638,25 +639,37 @@ export default class UserController {
       logger.warn(`DeleteMe failed: User not found in request`);
       throw new NotAuthorizedError("User not found");
     }
+  
     const existingUser = await User.findById(user.id);
     if (!existingUser) {
       logger.warn(`DeleteMe failed: User not found in DB for userId: ${user.id}`);
       throw new NotFoundError("User not found");
     }
+  
+    const userSessions = await UserSession.find({ userId: existingUser._id });
+    const tokensToBlacklist = userSessions.map(session => ({
+      token: session.token,
+    }));
+    if (tokensToBlacklist.length > 0) {
+      await BlacklistToken.insertMany(tokensToBlacklist);
+    }
+  
     const deleteActiveSessions = await UserSession.deleteMany({
       userId: existingUser._id,
     });
+  
     if (!deleteActiveSessions) {
       logger.error(`DeleteMe failed: Could not delete sessions for userId: ${user.id}`);
       throw new ServerError("Something went wrong while deleting sessions");
     }
+  
     await existingUser.deleteOne();
     const cacheKey = `user:${existingUser.name || "null"}:${existingUser.email || "null"}`;
     await redisService.del(cacheKey);
     logger.info(`User deleted successfully (deleteMe) for userId: ${user.id}`);
     return new ItemDeletedResponse("User Deleted Successfully");
   });
-
+  
   public deleteUser = asyncHandler(async (req: Request, res: Response) => {
     if (
       req.user.role !== UserType.SUPERADMIN &&
@@ -667,6 +680,7 @@ export default class UserController {
         "You are not authorized to access this resource"
       );
     }
+  
     const { userId } = req.params as { userId: string };
     logger.info(`Delete user attempt for userId: ${userId}`);
     const existingUser = await User.findById(userId);
@@ -674,14 +688,23 @@ export default class UserController {
       logger.warn(`Delete user failed: User not found (userId: ${userId})`);
       return new NotFoundError("User not found");
     }
-    const deleteActiveSessions = await UserSession.deleteMany({
-      userId: existingUser._id,
-    });
+  
+    const userSessions = await UserSession.find({ userId: existingUser._id });
+    const tokensToBlacklist = userSessions.map(session => ({
+      token: session.token,
+    }));
+    if (tokensToBlacklist.length > 0) {
+      await BlacklistToken.insertMany(tokensToBlacklist);
+    }
+  
+    await UserSession.deleteMany({ userId: existingUser._id });
     await existingUser.deleteOne();
+    const cacheKey = `user:${existingUser.name || "null"}:${existingUser.email || "null"}`;
+    await redisService.del(cacheKey);
     logger.info(`User deleted successfully for userId: ${userId}`);
     return new ItemDeletedResponse("User Deleted Successfully");
   });
-
+  
   public addSuperAdmin = asyncHandler(async (req: Request, res: Response) => {
     logger.info(`Add SuperAdmin attempt by userId: ${req.user?.id}`);
     if (req.user.role !== UserType.SUPERADMIN) {
@@ -1122,6 +1145,9 @@ export default class UserController {
         logger.warn(`Delete user session failed: User session not found (sessionId: ${sessionId})`);
         throw new NotFoundError("User session not found");
       }
+
+      const token = userSession.token
+      await BlacklistToken.create({token: token});
       await userSession.deleteOne();
       logger.info(`User session deleted successfully for sessionId: ${sessionId}`);
       return new ItemDeletedResponse("User Session Deleted Successfully");
