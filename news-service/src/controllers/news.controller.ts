@@ -92,25 +92,27 @@ export default class NewsController {
     const uploadedFileUrls: string[] = [];
     logger.info(`Edit news attempt by userId: ${req.user._id}, newsId: ${newsId}`);
     const files = req.files as Express.Multer.File[];
-    await Promise.all(
-      files.map(async (file) => {
-        try {
-          const filePath = path.join(process.cwd(), "uploads", file.filename);
-
-          const fileBuffer = await fs.readFile(filePath);
-          const result = await uploadAttachmentToS3(
-            file.originalname,
-            fileBuffer,
-            file.mimetype
-          );
-          uploadedFileUrls.push(result.Location);
-          await fs.unlink(filePath);
-        } catch (err) {
-          logger.error(`Error handling file ${file.originalname}`);
-        }
-      })
-    );
-
+    if(files && files.length > 0){
+        // Upload images to S3
+        logger.info(`Uploading images to S3 for news edit by userId: ${req.user._id}, newsId: ${newsId}`);
+        await Promise.all(
+            files.map(async (file) => {
+                try {
+                    const filePath = path.join(process.cwd(), "uploads", file.filename);
+                    const fileBuffer = await fs.readFile(filePath);
+                    const result = await uploadAttachmentToS3(
+                        file.originalname,
+                        fileBuffer,
+                        file.mimetype
+                    );
+                    uploadedFileUrls.push(result.Location);
+                    await fs.unlink(filePath);
+                } catch (err) {
+                    logger.error(`Error handling file ${file.originalname}`);
+                }
+            })
+        );
+    }
 
     const response = await publish({
         topic:'news-service',
@@ -125,7 +127,7 @@ export default class NewsController {
             location:location || news.location,
             editedBy: req.user._id,
             isFake:isFake !== undefined ? isFake : news.isFake,
-            imageURLs:uploadedFileUrls,
+            imageURLs:uploadedFileUrls || news.imageURLs,
             status:NewsStatus.VERIFIED
         },
     })

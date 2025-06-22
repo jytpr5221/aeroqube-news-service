@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Languages, NewsStatus } from '@models/news.model';
+import mongoose from 'mongoose';
 
 
 // Schema for uploading news
@@ -34,20 +35,64 @@ export const UploadNewsSchema = z.object({
 
 
 
-export const EditNewsSchema = UploadNewsSchema.extend({
-  isFake: z.preprocess(
-    val=>{
-      if (typeof val === 'string') {
-        return val.toLowerCase() === 'true';
-      }
-      return val;
-    },
-    z.boolean({
-      required_error: "isFake status is required",
-      invalid_type_error: "isFake must be a boolean"
-    })
-  )
-});
+  export const EditNewsSchema = z
+  .object({
+    title: z
+      .string({
+        invalid_type_error: "Title must be a string",
+      })
+      .min(5, { message: "Title should be at least 5 characters" })
+      .max(200, { message: "Title must be at most 200 characters" })
+      .optional(),
+
+    content: z
+      .string({
+        required_error: "Content is required",
+        invalid_type_error: "Content must be a string",
+      })
+      .min(1, { message: "Content cannot be empty" })
+      .optional(),
+
+    category: z
+      .string({
+        invalid_type_error: "Category must be a string (ObjectId)",
+      })
+      .refine((val) => mongoose.Types.ObjectId.isValid(val), {
+        message: "Invalid category ID",
+      })
+      .optional(),
+
+    language: z
+      .nativeEnum(Languages, {
+        required_error: "Language is required",
+        invalid_type_error: "Invalid language",
+      })
+      .optional(),
+
+    tags: z.array(z.string()).optional(),
+
+    location: z.string().optional(),
+
+    isFake: z
+      .preprocess(
+        (val) => {
+          if (typeof val === "string") {
+            return val.toLowerCase() === "true";
+          }
+          return val;
+        },
+        z.boolean({
+          required_error: "isFake status is required",
+          invalid_type_error: "isFake must be a boolean",
+        })
+      )
+      .optional(),
+  })
+  .refine((data) => Object.keys(data).some((key) => data[key] !== undefined), {
+    message: "At least one field must be provided to update.",
+    path: [],
+  });
+  
 
 // Schema for verifying news
 export const VerifyNewsSchema = z.object({
