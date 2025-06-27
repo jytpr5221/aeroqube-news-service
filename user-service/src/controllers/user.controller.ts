@@ -205,10 +205,15 @@ export default class UserController {
   public loginuser = asyncHandler(async (req: Request, res: Response) => {
     const { email, password } = req.body as ILoginUser;
     logger.info(`Login attempt for email: ${email}`);
-    const user = await User.findOne({ email, isVerified: true });
+    const user = await User.findOne({ email });
     if (!user) {
-      logger.warn(`Login failed: User not found or not verified for email: ${email}`);
+      logger.warn(`Login failed: User not found: ${email}`);
       throw new NotFoundError("User not found");
+    }
+
+    if(!user.isVerified){
+      logger.warn(`Login failed: User not verified for email: ${email}`)
+      throw new BadRequestError('User not verified')
     }
 
     const activeSessions = await UserSession.countDocuments({
