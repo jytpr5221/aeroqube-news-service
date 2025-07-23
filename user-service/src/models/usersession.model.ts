@@ -19,7 +19,13 @@ const UserSessionsSchema = new Schema<IUserSession>({
   platform: { type: String },
   ip: { type: String, required: true },
   createdOn: { type: Date, default: Date.now },
-  token:{type: String, required: true} 
+  token:{type: String, required: true},
+  expiresOn:{
+    type:Date,
+    default:function(){
+      return new Date( Date.now() + 15*24*60*60*1000 )
+    }
+  }
 });
 // we can add FCM token from client if user allows notification
 
