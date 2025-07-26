@@ -35,7 +35,7 @@ credentials = service_account.Credentials.from_service_account_file(credentials_
 elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
 eleven_client = ElevenLabs(api_key=elevenlabs_api_key)
 eleven_voice_ids = {
-    "hi": "ZwQHtywpqvyA1yLc1eEd",
+    "hi": "cOkIhvYxjsVSr2hF7Qsh",
     "ta": "Q9XUbaP7Z0Az8OW9CyRg",
 }
 
