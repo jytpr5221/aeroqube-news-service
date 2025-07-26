@@ -127,7 +127,7 @@ export default class NewsController {
             location:location || news.location,
             editedBy: req.user._id,
             isFake:isFake !== undefined ? isFake : news.isFake,
-            imageURLs:uploadedFileUrls || news.imageURLs,
+            imageURLs:uploadedFileUrls.length>0 ? uploadedFileUrls : news.imageURLs,
             status:NewsStatus.VERIFIED
         },
     })
