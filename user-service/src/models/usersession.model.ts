@@ -9,6 +9,7 @@ export interface IUserSession {
   ip: string;
   createdOn: Date;
   token:string;
+  expiresOn: Date;
 }
 
 const UserSessionsSchema = new Schema<IUserSession>({
